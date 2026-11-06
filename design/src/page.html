@@ -1,0 +1,204 @@
+<title>DarImmo Maquettes v3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Mise en page : un plan de travail façon Figma — barre d'outils, puis une rangée d'écrans par membre. */
+:root {
+  --canvas: #E9E6DF; --dot: #D3CEC3; --panel: #FFFFFF; --ink: #141A26; --ink-2: #5A6172;
+  --line: #D8D3C8; --accent: #1D5FAD; --accent-ink: #FFFFFF; --accent-soft: #E3ECF8; --bezel: #10141C;
+  --font-ui: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* Variables de l'application (mode Clair) — générées depuis spec.js */
+  /*__TOKENS_LIGHT__*/
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --canvas: #12151B; --dot: #232833; --panel: #1A1E26; --ink: #ECEFF4; --ink-2: #9CA3B1; --line: #2B303B; --accent: #78A9EA; --accent-ink: #0B1626; --accent-soft: #1C2A40; --bezel: #000000; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --canvas: #12151B; --dot: #232833; --panel: #1A1E26; --ink: #ECEFF4; --ink-2: #9CA3B1; --line: #2B303B; --accent: #78A9EA; --accent-ink: #0B1626; --accent-soft: #1C2A40; --bezel: #000000; color-scheme: dark; }
+.app-dark { /*__TOKENS_DARK__*/ }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-ui); font-size: 15px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--panel); border-bottom: 1px solid var(--line); }
+.toolbar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 12px; max-width: 1680px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; margin-right: auto; }
+.brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+.brand h1 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+.brand p { margin: 0; font-size: 12px; color: var(--ink-2); font-family: var(--font-mono); }
+.group { display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; }
+.group-label { font-size: 11px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .08em; padding: 0 6px 0 8px; }
+.seg-btn { font: inherit; font-size: 13px; font-weight: 700; color: var(--ink-2); background: transparent; border: 0; border-radius: 9px; padding: 7px 11px; cursor: pointer; white-space: nowrap; }
+.seg-btn:hover { color: var(--ink); }
+.seg-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg-btn:focus-visible, .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.canvas { background-image: radial-gradient(var(--dot) 1px, transparent 1px); background-size: 22px 22px; padding-block: 28px 80px; }
+.wrap { max-width: 1680px; margin: 0 auto; display: grid; gap: 56px; }
+
+.intro { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; min-width: 0; }
+.intro h2 { font-size: 26px; line-height: 1.2; margin: 0 0 10px; font-weight: 800; text-wrap: balance; letter-spacing: -.02em; }
+.intro p { margin: 0 0 10px; color: var(--ink-2); line-height: 1.6; max-width: 62ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.legend span { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--ink); }
+.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: s; }
+.steps li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ink-2); counter-increment: s; }
+.steps li::before { content: counter(s); width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.steps b { color: var(--ink); }
+.path { display: flex; gap: 8px; align-items: center; margin-top: 6px; min-width: 0; }
+.path code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; background: var(--canvas); border: 1px solid var(--line); padding: 8px 10px; border-radius: 8px; color: var(--ink); }
+.copy { font: inherit; font-size: 12px; font-weight: 700; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 8px 10px; cursor: pointer; flex-shrink: 0; }
+.card h3 { margin: 0 0 14px; font-size: 16px; font-weight: 800; }
+
+.section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 26px; }
+.section-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+.tag { font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 7px; background: var(--ink); color: var(--panel); }
+.tag.mine { background: var(--accent); color: var(--accent-ink); }
+.section-head .meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+#sections { display: grid; gap: 64px; }
+.screens { display: flex; flex-wrap: wrap; gap: 36px 30px; }
+.shot { display: grid; gap: 10px; justify-items: start; }
+.shot-label { display: flex; gap: 8px; align-items: baseline; font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); max-width: calc((390px + 20px) * var(--z)); }
+.shot-label b { color: var(--ink); font-weight: 700; }
+.shot-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phone { zoom: var(--z); padding: 10px; border-radius: 54px; background: var(--bezel); box-shadow: 0 30px 60px -24px rgba(10,14,22,.45), 0 0 0 1px rgba(255,255,255,.06) inset; }
+.phone > .screen { border-radius: 44px; overflow: hidden; position: relative; font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+.phone > .screen::after { content: ""; position: absolute; top: 11px; left: 50%; width: 118px; height: 33px; margin-left: -59px; border-radius: 20px; background: #000; z-index: 50; pointer-events: none; }
+.stories { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+.board { overflow-x: auto; padding-bottom: 6px; }
+.board > div { zoom: var(--z); font-family: var(--font-ui); }
+.scroll { scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+[data-section][hidden] { display: none !important; }
+@media (max-width: 900px) { .intro { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) { .phone { padding: 7px; border-radius: 48px; } .group-label { display: none; } }
+@media (prefers-reduced-motion: no-preference) { .seg-btn { transition: background .15s, color .15s; } }
+</style>
+
+<header class="toolbar">
+  <div class="toolbar-inner gutter">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 21V10.5a8 8 0 0 1 16 0V21" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M9 21v-6a3 3 0 0 1 6 0v6" stroke="#F3CF83" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </div>
+      <div style="min-width:0">
+        <h1>DarImmo · Maquettes v3</h1>
+        <p>23 écrans · design system · Sprint 0</p>
+      </div>
+    </div>
+    <div class="group" role="group" aria-label="Filtrer par membre">
+      <span class="group-label">Membre</span>
+      <button class="seg-btn" id="f-all" data-filter="all" aria-pressed="true">Tous</button>
+      <button class="seg-btn" id="f-C" data-filter="C" aria-pressed="false">C · 1.4c</button>
+      <button class="seg-btn" id="f-B" data-filter="B" aria-pressed="false">B · 1.4b</button>
+      <button class="seg-btn" id="f-A" data-filter="A" aria-pressed="false">A · 1.4a</button>
+      <button class="seg-btn" id="f-DS" data-filter="DS" aria-pressed="false">Design system</button>
+    </div>
+    <div class="group" role="group" aria-label="Thème de l'application">
+      <span class="group-label">App</span>
+      <button class="seg-btn" id="t-light" data-app="light" aria-pressed="true">Clair</button>
+      <button class="seg-btn" id="t-dark" data-app="dark" aria-pressed="false">Sombre</button>
+    </div>
+    <div class="group" role="group" aria-label="Zoom">
+      <span class="group-label">Zoom</span>
+      <button class="seg-btn" id="z-s" data-zoom="0.5" aria-pressed="false">50 %</button>
+      <button class="seg-btn" id="z-m" data-zoom="0.7" aria-pressed="true">70 %</button>
+      <button class="seg-btn" id="z-l" data-zoom="1" aria-pressed="false">100 %</button>
+    </div>
+  </div>
+</header>
+
+<main class="canvas gutter">
+  <div class="wrap" id="app" style="--z:.7">
+    <section class="intro">
+      <div class="card">
+        <h2>Toutes les maquettes de DarImmo, prêtes pour Figma</h2>
+        <p>Chaque écran reprend les vrais champs de la base Supabase : statuts d'annonce, motif de rejet, conversations liées à une annonce, jetons de notification. Les écrans du membre C sont en premier.</p>
+        <p>Les couleurs s'inspirent de Sidi Bou Saïd : bleu des portes, ocre des façades, fond sable. Le bouton « Sombre » montre la version mode sombre (story 2.6).</p>
+        <div class="legend"><span>9 écrans · Membre C</span><span>6 écrans · Membre B</span><span>8 écrans · Membre A</span><span>Défilement possible dans les écrans longs</span></div>
+      </div>
+      <div class="card">
+        <h3>Importer dans Figma (plugin fourni)</h3>
+        <ol class="steps">
+          <li><span>Ouvrez l'application <b>Figma Desktop</b>. Un plugin local ne s'importe pas depuis le navigateur.</span></li>
+          <li><span>Créez un fichier de design, puis menu <b>Plugins → Development → Import plugin from manifest…</b> et choisissez :
+            <span class="path"><code id="plugin-path">D:\flutter\flutter_application_1\projet_3eme\design\figma-plugin\manifest.json</code><button class="copy" id="copy-path" type="button">Copier</button></span></span></li>
+          <li><span>Lancez <b>Plugins → Development → DarImmo Maquettes</b>. En 20 secondes environ, une page « DarImmo · Maquettes v3 » apparaît.</span></li>
+          <li><span>Tout est modifiable : auto-layout, textes, et couleurs reliées aux <b>variables</b> (modes Clair et Sombre).</span></li>
+        </ol>
+      </div>
+    </section>
+    <div id="sections"></div>
+  </div>
+</main>
+
+<script>
+/*__BUNDLE__*/
+</script>
+<script>
+(function () {
+  var host = document.getElementById('sections');
+  function sectionEl(id, tagText, title, meta, mine) {
+    var s = document.createElement('section');
+    s.setAttribute('data-section', id);
+    var head = document.createElement('div'); head.className = 'section-head';
+    var tag = document.createElement('span'); tag.className = 'tag' + (mine ? ' mine' : ''); tag.textContent = tagText;
+    var h = document.createElement('h2'); h.textContent = title;
+    var m = document.createElement('span'); m.className = 'meta'; m.textContent = meta;
+    head.appendChild(tag); head.appendChild(h); head.appendChild(m); s.appendChild(head);
+    return s;
+  }
+  GROUPS.forEach(function (g) {
+    var s = sectionEl(g.id, 'Tâche ' + g.task + ' · ' + g.owner, g.title, g.epics + ' · ' + g.screens.length + ' écrans', g.id === 'C');
+    var grid = document.createElement('div'); grid.className = 'screens';
+    g.screens.forEach(function (fn) {
+      var spec = fn();
+      var shot = document.createElement('figure'); shot.className = 'shot'; shot.style.margin = '0';
+      var label = document.createElement('figcaption'); label.className = 'shot-label';
+      var b = document.createElement('b'); b.textContent = spec.meta.id;
+      var t = document.createElement('span'); t.textContent = spec.meta.title;
+      label.appendChild(b); label.appendChild(t);
+      var phone = document.createElement('div'); phone.className = 'phone';
+      var scr = renderHTML(spec, null); scr.classList.add('screen');
+      phone.appendChild(scr);
+      var st = document.createElement('div'); st.className = 'stories'; st.textContent = 'Stories ' + spec.meta.stories;
+      shot.appendChild(label); shot.appendChild(phone); shot.appendChild(st);
+      grid.appendChild(shot);
+    });
+    s.appendChild(grid); host.appendChild(s);
+  });
+  var ds = sectionEl('DS', 'Design system', 'Couleurs, typographie, composants et icônes', 'Planche 1120 px · aussi créée dans Figma', false);
+  var board = document.createElement('div'); board.className = 'board';
+  var dsEl = renderHTML(designSystem(), null); dsEl.style.border = '1px solid var(--t-border)';
+  board.appendChild(dsEl); ds.appendChild(board); host.appendChild(ds);
+
+  var app = document.getElementById('app');
+  function press(sel, btn) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); }); }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function setFilter(f) {
+    document.querySelectorAll('[data-section]').forEach(function (s) { s.hidden = !(f === 'all' || s.getAttribute('data-section') === f); });
+    press('[data-filter]', document.querySelector('[data-filter="' + f + '"]')); store('dz-filter', f);
+  }
+  function setApp(m) { app.classList.toggle('app-dark', m === 'dark'); press('[data-app]', document.querySelector('[data-app="' + m + '"]')); store('dz-app', m); }
+  function setZoom(z) { app.style.setProperty('--z', z); press('[data-zoom]', document.querySelector('[data-zoom="' + z + '"]')); store('dz-zoom', z); }
+  document.querySelectorAll('[data-filter]').forEach(function (b) { b.addEventListener('click', function () { setFilter(b.dataset.filter); }); });
+  document.querySelectorAll('[data-app]').forEach(function (b) { b.addEventListener('click', function () { setApp(b.dataset.app); }); });
+  document.querySelectorAll('[data-zoom]').forEach(function (b) { b.addEventListener('click', function () { setZoom(b.dataset.zoom); }); });
+  var small = window.matchMedia('(max-width: 560px)').matches;
+  setFilter(read('dz-filter') || 'all');
+  setApp(read('dz-app') || 'light');
+  setZoom(read('dz-zoom') || (small ? '0.5' : '0.7'));
+  document.getElementById('copy-path').addEventListener('click', function () {
+    var code = document.getElementById('plugin-path'), btn = this;
+    function done() { btn.textContent = 'Copié'; setTimeout(function () { btn.textContent = 'Copier'; }, 1600); }
+    function fallback() { var r = document.createRange(); r.selectNodeContents(code); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = 'Sélectionné'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code.textContent).then(done, fallback); else fallback();
+  });
+})();
+</script>
