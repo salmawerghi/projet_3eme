@@ -1,0 +1,346 @@
+Issue Id,Issue Type,Summary,Parent,Description,Story Points,Sprint,Components,Labels,Labels,Epic Name
+1,Epic,Epic 1 : Conception et mise en place,,"Conception C4, base de données, maquettes, backend Supabase, Firebase, carte, dépôts Git et squelettes des deux applications. Responsable : membre A",,,,membre-A,,1 - Conception et mise en place
+2,Task,[1.1] Diagrammes C4 niveaux 1 et 2,1,"Réaliser les diagrammes de contexte et de conteneurs (méthode C4, c4model.com).
+Critères d'acceptation :
+* Les conteneurs Supabase (Auth, REST, Realtime, Storage, Edge Functions, PostgreSQL) et Firebase apparaissent
+* Administration intégrée à l'application mobile (pas de back-office web au MVP)",3,Sprint 0,Documentation,membre-A,mvp,
+3,Task,[1.2] Diagrammes C4 niveaux 3 et 4,1,"Réaliser les diagrammes de composants et de code (méthode C4).
+Critères d'acceptation :
+* Inclut AdminModule et le module de signalement
+* Classe Annonce + AnnonceRepository + ViewModel",3,Sprint 0,Documentation,membre-B,mvp,
+4,Task,"[1.3] Schéma de base de données, script SQL et données de test",1,"Écrire le schéma PostgreSQL/PostGIS et le script SQL exécutable dans Supabase.
+Critères d'acceptation :
+* Tables : profiles, device_tokens, annonces, photos, favoris, conversations, messages, alertes, signalements
+* Énumérations : rôle (utilisateur, admin), statut d'annonce (brouillon, en_attente, publiee, rejetee, vendue, louee, masquee), statut de signalement
+* Champs motif_rejet (annonce) et bloque (profil)
+* Colonne position geography(Point) avec index GIST
+* Contraintes d'unicité : favori, conversation (annonce + acheteur), signalement (utilisateur + annonce), photo (annonce + ordre)
+* Politiques RLS des tables publication / messagerie / notifications (relues par A)
+* Script de données de test (seed) : 3 comptes, environ 20 annonces publiées
+* Script relu par A",5,Sprint 0,Backend,membre-C,mvp,
+5,Task,"[1.4a] Maquettes Figma : authentification, profil, administration",1,Maquettes des écrans de ses modules.,2,Sprint 0,Design,membre-A,mvp,
+6,Task,"[1.4b] Maquettes Figma : recherche, détail, carte, favoris",1,Maquettes des écrans de ses modules. B vérifie la cohérence de l'ensemble.,2,Sprint 0,Design,membre-B,mvp,
+7,Task,"[1.4c] Maquettes Figma : publication, mes annonces, messagerie",1,"Maquettes des écrans de ses modules : formulaire, photos, choix de position, mes annonces, conversations, chat.",1,Sprint 0,Design,membre-C,mvp,
+8,Task,"[1.5] Backend Supabase (projet, sécurité, stockage)",1,"Créer le projet Supabase et le configurer à partir du script de C.
+Critères d'acceptation :
+* Script SQL de C exécuté sans erreur
+* Trigger : création automatique du profil à l'inscription
+* RLS activé sur toutes les tables
+* Buckets Storage : annonces-photos (public en lecture) et avatars
+* Realtime activé sur la table messages
+* Clés partagées par un fichier .env non versionné",5,Sprint 0,Backend,membre-A,mvp,
+9,Task,[1.6] Dépôts Git et squelettes de projet,1,"Créer les dépôts, la structure de dossiers par module (features/auth, features/search, features/publish, features/chat...) et les squelettes Flutter et React Native.
+Critères d'acceptation :
+* Branches main et develop protégées
+* Client Supabase configuré dans les deux squelettes
+* Navigation de base et thème",3,Sprint 0,,membre-A,mvp,
+10,Sub-task,[1.6] Flutter : Dépôts Git et squelettes de projet,9,Réaliser [1.6] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+11,Sub-task,[1.6] React Native : Dépôts Git et squelettes de projet,9,Réaliser [1.6] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+12,Task,[1.7] Projet Firebase et preuve de concept temps réel / push,1,"Lever tôt les deux risques techniques majeurs (chat temps réel et notifications push).
+Critères d'acceptation :
+* Projet Firebase créé, application Android enregistrée (google-services.json)
+* Un message inséré dans Supabase s'affiche en direct sur un 2e appareil
+* Une Edge Function Supabase envoie une notification FCM reçue sur l'appareil
+* React Native : development build Expo (FCM ne fonctionne pas dans Expo Go)",3,Sprint 0,Backend,membre-C,mvp,
+13,Sub-task,[1.7] Flutter : Projet Firebase et preuve de concept temps réel / push,12,Réaliser [1.7] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+14,Sub-task,[1.7] React Native : Projet Firebase et preuve de concept temps réel / push,12,Réaliser [1.7] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+15,Task,[1.8] Choix et configuration de la carte,1,"Choisir le fournisseur de carte et fournir un widget de carte réutilisable.
+Critères d'acceptation :
+* Fournisseur choisi : Google Maps (clé API) ou OpenStreetMap (gratuit)
+* Clé API créée et partagée si nécessaire
+* Composant de carte de base utilisable par B (4.1, 4.2) et par C (6.4)",2,Sprint 0,,membre-B,mvp,
+16,Sub-task,[1.8] Flutter : Choix et configuration de la carte,15,Réaliser [1.8] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+17,Sub-task,[1.8] React Native : Choix et configuration de la carte,15,Réaliser [1.8] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+18,Epic,Epic 2 : Authentification et profil,,"Inscription, connexion, gestion du profil et du mot de passe. Responsable : membre A",,,,membre-A,,2 - Authentification et profil
+19,Story,[2.1] S'inscrire par email,18,"En tant que visiteur, je veux m'inscrire par email afin d'avoir un compte.
+Critères d'acceptation :
+* Champs nom, email et mot de passe
+* Email valide et mot de passe d'au moins 8 caractères
+* Erreur claire si l'email existe déjà
+* Compte et profil créés en base de données",5,Sprint 1,,membre-A,mvp,
+20,Sub-task,[2.1] Flutter : S'inscrire par email,19,Réaliser [2.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+21,Sub-task,[2.1] React Native : S'inscrire par email,19,Réaliser [2.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+22,Story,[2.2] Se connecter et se déconnecter,18,"En tant qu'utilisateur, je veux me connecter et me déconnecter afin d'accéder à mon espace.
+Critères d'acceptation :
+* Connexion par email et mot de passe
+* Message clair si les identifiants sont faux
+* Session conservée à la réouverture de l'application
+* Bouton de déconnexion",3,Sprint 1,,membre-A,mvp,
+23,Sub-task,[2.2] Flutter : Se connecter et se déconnecter,22,Réaliser [2.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+24,Sub-task,[2.2] React Native : Se connecter et se déconnecter,22,Réaliser [2.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+25,Story,[2.3] Modifier mon profil et ma photo,18,"En tant qu'utilisateur, je veux modifier mon profil et ma photo afin que les autres me reconnaissent.
+Critères d'acceptation :
+* Modification du nom et du téléphone
+* Choix d'une photo depuis la galerie (bucket avatars)
+* Changements visibles immédiatement",3,Sprint 1,,membre-A,mvp,
+26,Sub-task,[2.3] Flutter : Modifier mon profil et ma photo,25,Réaliser [2.3] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+27,Sub-task,[2.3] React Native : Modifier mon profil et ma photo,25,Réaliser [2.3] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+28,Story,[2.4] Réinitialiser mon mot de passe,18,"En tant qu'utilisateur, je veux réinitialiser mon mot de passe oublié afin de récupérer mon compte.
+Critères d'acceptation :
+* Lien de réinitialisation envoyé par email
+* Nouveau mot de passe accepté
+* Ancien mot de passe refusé ensuite",3,Sprint 2,,membre-A,mvp,
+29,Sub-task,[2.4] Flutter : Réinitialiser mon mot de passe,28,Réaliser [2.4] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+30,Sub-task,[2.4] React Native : Réinitialiser mon mot de passe,28,Réaliser [2.4] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+31,Story,[2.5] Connexion Google et vérification du téléphone (OTP),18,"En tant qu'utilisateur, je veux me connecter avec Google et confirmer mon téléphone par code afin de sécuriser et accélérer l'accès.
+Critères d'acceptation :
+* Connexion Google fonctionnelle
+* Code OTP reçu par SMS et validé",5,,,membre-A,bonus,
+32,Story,[2.6] Mode sombre,18,"En tant qu'utilisateur, je veux activer le mode sombre afin d'utiliser l'application confortablement la nuit.
+Critères d'acceptation :
+* Choix clair / sombre / système
+* Choix conservé",2,,,membre-A,bonus,
+33,Epic,Epic 3 : Recherche et consultation,,"Liste, filtres, détail des annonces et signalement. Responsable : membre B",,,,membre-B,,3 - Recherche et consultation
+34,Story,[3.1] Voir la liste des annonces,33,"En tant que visiteur, je veux voir la liste des annonces afin de découvrir les biens disponibles.
+Critères d'acceptation :
+* Seules les annonces au statut « publiée » sont affichées
+* Chaque carte affiche photo, titre, prix, ville et surface
+* Chargement progressif (pagination)
+* Indicateur de chargement
+* Message si la liste est vide",5,Sprint 1,,membre-B,mvp,
+35,Sub-task,[3.1] Flutter : Voir la liste des annonces,34,Réaliser [3.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+36,Sub-task,[3.1] React Native : Voir la liste des annonces,34,Réaliser [3.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+37,Story,[3.2] Filtrer les annonces,33,"En tant que chercheur, je veux filtrer par prix, ville, type, offre et nombre de pièces afin de trouver un bien dans mon budget.
+Critères d'acceptation :
+* Prix minimum et maximum
+* Choix de la ville
+* Type de bien : appartement, villa, terrain, local
+* Vente ou location
+* Nombre de pièces minimum
+* Liste mise à jour après application des filtres
+* Message « Aucun bien trouvé » si aucun résultat
+* Bouton Réinitialiser",8,Sprint 2,,membre-B,mvp,
+38,Sub-task,[3.2] Flutter : Filtrer les annonces,37,Réaliser [3.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+39,Sub-task,[3.2] React Native : Filtrer les annonces,37,Réaliser [3.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+40,Story,[3.3] Consulter le détail d'une annonce,33,"En tant que chercheur, je veux consulter le détail d'une annonce afin de décider si le bien m'intéresse.
+Critères d'acceptation :
+* Galerie de photos défilante
+* Description, surface, nombre de pièces, prix, ville
+* Nom de l'annonceur
+* Emplacement du bouton Contacter (action réalisée par C en 7.1)",5,Sprint 3,,membre-B,mvp,
+41,Sub-task,[3.3] Flutter : Consulter le détail d'une annonce,40,Réaliser [3.3] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+42,Sub-task,[3.3] React Native : Consulter le détail d'une annonce,40,Réaliser [3.3] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+43,Story,[3.4] Signaler une annonce,33,"En tant qu'utilisateur, je veux signaler une annonce afin de prévenir d'une fraude ou d'un contenu inapproprié.
+Critères d'acceptation :
+* Bouton Signaler sur le détail de l'annonce
+* Choix d'un motif
+* Confirmation affichée
+* Un seul signalement par utilisateur et par annonce",3,Sprint 5,,membre-B,mvp,
+44,Sub-task,[3.4] Flutter : Signaler une annonce,43,Réaliser [3.4] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+45,Sub-task,[3.4] React Native : Signaler une annonce,43,Réaliser [3.4] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+46,Story,[3.5] Trier les résultats,33,"En tant que chercheur, je veux trier les résultats par prix, date ou distance afin de voir d'abord les biens les plus pertinents.
+Critères d'acceptation :
+* Choix du critère de tri
+* Ordre appliqué à la liste",3,,,membre-B,bonus,
+47,Story,[3.6] Sauvegarder une recherche,33,"En tant que chercheur, je veux sauvegarder mes critères afin de les retrouver en un clic.
+Critères d'acceptation :
+* Recherche enregistrée avec un nom (table alertes)
+* Relance en un clic",5,,,membre-B,bonus,
+48,Story,[3.7] Recherche vocale,33,"En tant que chercheur, je veux dicter mes critères afin de chercher sans taper.
+Critères d'acceptation :
+* Bouton micro
+* Critères reconnus et appliqués",3,,,membre-B,bonus,
+49,Story,[3.8] Partager une annonce,33,"En tant que chercheur, je veux partager une annonce afin de la montrer à un proche.
+Critères d'acceptation :
+* Bouton Partager
+* Lien ou partage vers d'autres applications",2,,,membre-B,bonus,
+50,Story,[3.9] Calculateur de crédit,33,"En tant que chercheur, je veux estimer mes mensualités afin d'évaluer mon budget.
+Critères d'acceptation :
+* Saisie du montant, de la durée et du taux
+* Mensualité calculée",3,,,membre-B,bonus,
+51,Story,[3.10] Visite virtuelle 360°,33,"En tant que chercheur, je veux visiter un bien en 360° afin de me déplacer moins.
+Critères d'acceptation :
+* Photos panoramiques navigables",5,,,membre-B,bonus,
+52,Epic,Epic 4 : Carte et géolocalisation,,Annonces sur carte et recherche autour de moi. Responsable : membre B,,,,membre-B,,4 - Carte et géolocalisation
+53,Story,[4.1] Voir les annonces sur une carte,52,"En tant que chercheur, je veux voir les annonces sur une carte afin de repérer leur emplacement.
+Critères d'acceptation :
+* Un marqueur par bien publié
+* Toucher un marqueur affiche photo et prix
+* Toucher l'aperçu ouvre le détail",5,Sprint 4,,membre-B,mvp,
+54,Sub-task,[4.1] Flutter : Voir les annonces sur une carte,53,Réaliser [4.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+55,Sub-task,[4.1] React Native : Voir les annonces sur une carte,53,Réaliser [4.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+56,Story,[4.2] Voir les biens autour de moi,52,"En tant que chercheur, je veux voir les biens autour de moi afin de chercher près de mon lieu.
+Critères d'acceptation :
+* Demande d'autorisation de localisation
+* Carte centrée sur ma position
+* Biens affichés dans un rayon choisi (fonction SQL PostGIS appelée en RPC)
+* Message explicatif si l'autorisation est refusée",5,Sprint 4,,membre-B,mvp,
+57,Sub-task,[4.2] Flutter : Voir les biens autour de moi,56,Réaliser [4.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+58,Sub-task,[4.2] React Native : Voir les biens autour de moi,56,Réaliser [4.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+59,Story,[4.3] Regrouper les marqueurs (clusters),52,"En tant que chercheur, je veux que les marqueurs proches soient regroupés afin de garder une carte lisible.
+Critères d'acceptation :
+* Marqueurs regroupés avec un compteur
+* Zoom pour les séparer",3,,,membre-B,bonus,
+60,Story,[4.4] Dessiner une zone de recherche,52,"En tant que chercheur, je veux dessiner une zone sur la carte afin de chercher dans un quartier précis.
+Critères d'acceptation :
+* Dessin à main levée
+* Seuls les biens de la zone sont listés",8,,,membre-B,bonus,
+61,Story,[4.5] Itinéraire vers un bien,52,"En tant que chercheur, je veux obtenir l'itinéraire vers un bien afin de m'y rendre.
+Critères d'acceptation :
+* Bouton Itinéraire
+* Ouverture de l'application de navigation",3,,,membre-B,bonus,
+62,Epic,Epic 5 : Favoris,,Enregistrer et retrouver ses annonces préférées. Responsable : membre B,,,,membre-B,,5 - Favoris
+63,Story,[5.1] Ajouter ou retirer une annonce des favoris,62,"En tant qu'utilisateur, je veux ajouter ou retirer une annonce de mes favoris afin de la retrouver plus tard.
+Critères d'acceptation :
+* Icône cœur sur la liste et sur le détail
+* État conservé après fermeture de l'application
+* Un visiteur est invité à se connecter",3,Sprint 5,,membre-B,mvp,
+64,Sub-task,[5.1] Flutter : Ajouter ou retirer une annonce des favoris,63,Réaliser [5.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+65,Sub-task,[5.1] React Native : Ajouter ou retirer une annonce des favoris,63,Réaliser [5.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+66,Story,[5.2] Consulter mes favoris,62,"En tant qu'utilisateur, je veux consulter mes favoris afin de comparer mes biens préférés.
+Critères d'acceptation :
+* Écran dédié aux favoris
+* Retrait possible depuis la liste
+* Message si aucun favori",2,Sprint 5,,membre-B,mvp,
+67,Sub-task,[5.2] Flutter : Consulter mes favoris,66,Réaliser [5.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-B,mvp,
+68,Sub-task,[5.2] React Native : Consulter mes favoris,66,Réaliser [5.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-B,mvp,
+69,Story,[5.3] Comparer plusieurs biens,62,"En tant qu'utilisateur, je veux comparer 2 à 3 biens côte à côte afin de choisir.
+Critères d'acceptation :
+* Sélection de 2 à 3 biens
+* Tableau comparatif prix, surface, pièces, ville",5,,,membre-B,bonus,
+70,Epic,Epic 6 : Publication d'annonces,,"Créer, enrichir et gérer ses annonces. Responsable : membre C",,,,membre-C,,6 - Publication d'annonces
+71,Story,[6.1] Publier une annonce,70,"En tant qu'annonceur, je veux publier une annonce afin de vendre ou louer mon bien.
+Critères d'acceptation :
+* Champs : titre, type, offre, prix, surface, pièces, adresse, ville, description
+* Validation des champs obligatoires
+* Statut « en attente de validation » après envoi
+* id_annonceur = utilisateur connecté (compte de test créé à la main tant que 2.1 / 2.2 ne sont pas terminées)",5,Sprint 1,,membre-C,mvp,
+72,Sub-task,[6.1] Flutter : Publier une annonce,71,Réaliser [6.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+73,Sub-task,[6.1] React Native : Publier une annonce,71,Réaliser [6.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+74,Story,[6.2] Ajouter des photos,70,"En tant qu'annonceur, je veux ajouter des photos afin de mettre mon bien en valeur.
+Critères d'acceptation :
+* Jusqu'à 10 photos
+* Aperçu avant envoi
+* Suppression et changement d'ordre
+* Compression avant envoi
+* Fichiers stockés dans le bucket annonces-photos sous {id_annonce}/
+* En cas d'échec d'envoi : message clair et nouvelle tentative possible",5,Sprint 2,,membre-C,mvp,
+75,Sub-task,[6.2] Flutter : Ajouter des photos,74,Réaliser [6.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+76,Sub-task,[6.2] React Native : Ajouter des photos,74,Réaliser [6.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+77,Story,[6.3] Gérer mes annonces,70,"En tant qu'annonceur, je veux gérer mes annonces afin de les garder à jour.
+Critères d'acceptation :
+* Liste « Mes annonces » avec statut
+* Modification d'une annonce
+* Une annonce publiée modifiée repasse « en attente »
+* Suppression avec confirmation (photos supprimées du stockage)
+* Marquer « vendu » ou « loué »",3,Sprint 3,,membre-C,mvp,
+78,Sub-task,[6.3] Flutter : Gérer mes annonces,77,Réaliser [6.3] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+79,Sub-task,[6.3] React Native : Gérer mes annonces,77,Réaliser [6.3] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+80,Story,[6.4] Placer mon bien sur la carte,70,"En tant qu'annonceur, je veux placer mon bien sur la carte afin que les chercheurs le localisent.
+Critères d'acceptation :
+* Marqueur déplaçable (composant de carte de 1.8)
+* Position actuelle ou recherche d'adresse
+* Latitude, longitude et position PostGIS enregistrées",3,Sprint 4,,membre-C,mvp,
+81,Sub-task,[6.4] Flutter : Placer mon bien sur la carte,80,Réaliser [6.4] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+82,Sub-task,[6.4] React Native : Placer mon bien sur la carte,80,Réaliser [6.4] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+83,Story,[6.5] Voir l'état de validation de mes annonces,70,"En tant qu'annonceur, je veux voir l'état de validation afin de savoir si mon annonce est en ligne.
+Critères d'acceptation :
+* Statut en attente, publiée, rejetée, vendue / louée ou masquée
+* Motif affiché en cas de rejet ou de masquage",2,Sprint 3,,membre-C,mvp,
+84,Sub-task,[6.5] Flutter : Voir l'état de validation de mes annonces,83,Réaliser [6.5] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+85,Sub-task,[6.5] React Native : Voir l'état de validation de mes annonces,83,Réaliser [6.5] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+86,Story,[6.6] Brouillons d'annonces,70,"En tant qu'annonceur, je veux enregistrer un brouillon afin de finir mon annonce plus tard.
+Critères d'acceptation :
+* Enregistrement d'une annonce incomplète (statut brouillon)
+* Reprise depuis Mes annonces",3,,,membre-C,bonus,
+87,Story,[6.7] Dupliquer une annonce,70,"En tant qu'annonceur, je veux dupliquer une annonce afin de gagner du temps pour des biens similaires.
+Critères d'acceptation :
+* Copie des champs, sans les photos",2,,,membre-C,bonus,
+88,Story,[6.8] Mettre une annonce en avant (boost),70,"En tant qu'annonceur, je veux mettre mon annonce en avant afin d'être vu en premier.
+Critères d'acceptation :
+* Annonce affichée en tête des résultats pendant une durée",5,,,membre-C,bonus,
+89,Story,[6.9] Statistiques de mes annonces,70,"En tant qu'annonceur, je veux voir les statistiques de mes annonces afin de mesurer leur succès.
+Critères d'acceptation :
+* Nombre de vues, de favoris et de contacts par annonce",5,,,membre-C,bonus,
+90,Epic,Epic 7 : Messagerie,,Conversations en temps réel entre chercheurs et annonceurs. Responsable : membre C,,,,membre-C,,7 - Messagerie
+91,Story,[7.1] Contacter l'annonceur depuis une annonce,90,"En tant que chercheur, je veux contacter l'annonceur depuis une annonce afin de poser mes questions.
+Critères d'acceptation :
+* Bouton Contacter sur le détail (écran de B, 3.3)
+* Ouvre une conversation liée à l'annonce, ou reprend l'existante
+* Compte obligatoire
+* Impossible de se contacter soi-même",3,Sprint 4,,membre-C,mvp,
+92,Sub-task,[7.1] Flutter : Contacter l'annonceur depuis une annonce,91,Réaliser [7.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+93,Sub-task,[7.1] React Native : Contacter l'annonceur depuis une annonce,91,Réaliser [7.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+94,Story,[7.2] Échanger en temps réel,90,"En tant qu'utilisateur, je veux échanger en temps réel afin de négocier rapidement.
+Critères d'acceptation :
+* Le message apparaît chez le destinataire sans recharger
+* Heure d'envoi affichée
+* Historique conservé
+* Seuls les deux participants peuvent lire et écrire (RLS)",8,Sprint 5,,membre-C,mvp,
+95,Sub-task,[7.2] Flutter : Échanger en temps réel,94,Réaliser [7.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+96,Sub-task,[7.2] React Native : Échanger en temps réel,94,Réaliser [7.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+97,Story,[7.3] Voir mes conversations,90,"En tant qu'utilisateur, je veux voir mes conversations afin de reprendre une discussion.
+Critères d'acceptation :
+* Nom, photo, annonce et dernier message
+* Tri du plus récent au plus ancien (date_dernier_message)
+* Indicateur de message non lu",3,Sprint 4,,membre-C,mvp,
+98,Sub-task,[7.3] Flutter : Voir mes conversations,97,Réaliser [7.3] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+99,Sub-task,[7.3] React Native : Voir mes conversations,97,Réaliser [7.3] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+100,Story,[7.4] Envoyer des photos dans le chat,90,"En tant qu'utilisateur, je veux envoyer des photos dans la discussion afin de préciser mes questions.
+Critères d'acceptation :
+* Envoi et affichage d'images dans la conversation",5,,,membre-C,bonus,
+101,Story,[7.5] Indicateur « lu »,90,"En tant qu'utilisateur, je veux savoir si mon message a été lu afin d'adapter ma relance.
+Critères d'acceptation :
+* Marque « lu » affichée sous le message",3,,,membre-C,bonus,
+102,Epic,Epic 8 : Notifications,,Notifications push pour les messages et les changements de statut. Responsable : membre C,,,,membre-C,,8 - Notifications
+103,Story,[8.1] Être notifié d'un nouveau message,102,"En tant qu'utilisateur, je veux être notifié d'un nouveau message afin de répondre vite.
+Critères d'acceptation :
+* Jeton FCM enregistré dans device_tokens à la connexion, supprimé à la déconnexion
+* Envoi par Edge Function déclenchée à l'insertion d'un message
+* Notification push reçue application fermée ou ouverte
+* Toucher la notification ouvre la bonne conversation",5,Sprint 6,,membre-C,mvp,
+104,Sub-task,[8.1] Flutter : Être notifié d'un nouveau message,103,Réaliser [8.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+105,Sub-task,[8.1] React Native : Être notifié d'un nouveau message,103,Réaliser [8.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+106,Story,[8.2] Être notifié du changement de statut de mon annonce,102,"En tant qu'annonceur, je veux être notifié du changement de statut de mon annonce afin de savoir si elle est validée.
+Critères d'acceptation :
+* Notification à la validation, au rejet et au masquage
+* Motif visible dans l'application",3,Sprint 6,,membre-C,mvp,
+107,Sub-task,[8.2] Flutter : Être notifié du changement de statut de mon annonce,106,Réaliser [8.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-C,mvp,
+108,Sub-task,[8.2] React Native : Être notifié du changement de statut de mon annonce,106,Réaliser [8.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-C,mvp,
+109,Story,[8.3] Alerte nouveau bien selon mes critères,102,"En tant que chercheur, je veux être alerté d'un nouveau bien correspondant à mes critères afin de réagir avant les autres.
+Critères d'acceptation :
+* Critères enregistrés
+* Notification à chaque nouvelle annonce correspondante",8,,,membre-C,bonus,
+110,Story,[8.4] Alerte de baisse de prix,102,"En tant qu'utilisateur, je veux être alerté d'une baisse de prix sur mes favoris afin de saisir une bonne affaire.
+Critères d'acceptation :
+* Notification quand le prix d'un favori diminue",3,,,membre-C,bonus,
+111,Epic,Epic 9 : Administration et modération,,"Outils de l'administrateur dans l'application mobile : rôle, validation, blocage de comptes, signalements. Responsable : membre A",,,,membre-A,,9 - Administration et modération
+112,Story,[9.1] Rôle administrateur,111,"En tant qu'administrateur, je veux un rôle dédié afin d'accéder aux outils de modération.
+Critères d'acceptation :
+* Rôle admin dans profiles.role
+* Écrans d'administration invisibles pour les autres rôles
+* RLS : seul un admin peut changer le statut de l'annonce d'un autre",2,Sprint 2,,membre-A,mvp,
+113,Sub-task,[9.1] Flutter : Rôle administrateur,112,Réaliser [9.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+114,Sub-task,[9.1] React Native : Rôle administrateur,112,Réaliser [9.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+115,Story,[9.2] Valider ou rejeter une annonce,111,"En tant qu'administrateur, je veux valider ou rejeter une annonce afin de garantir la qualité.
+Critères d'acceptation :
+* Liste des annonces en attente
+* Bouton Valider
+* Bouton Rejeter avec motif obligatoire (annonces.motif_rejet)",5,Sprint 4,,membre-A,mvp,
+116,Sub-task,[9.2] Flutter : Valider ou rejeter une annonce,115,Réaliser [9.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+117,Sub-task,[9.2] React Native : Valider ou rejeter une annonce,115,Réaliser [9.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+118,Story,[9.3] Bloquer ou débloquer un compte,111,"En tant qu'administrateur, je veux bloquer ou débloquer un compte afin de stopper les abus.
+Critères d'acceptation :
+* Recherche d'un utilisateur
+* Champ profiles.bloque
+* Un compte bloqué ne peut plus se connecter ni publier",3,Sprint 5,,membre-A,mvp,
+119,Sub-task,[9.3] Flutter : Bloquer ou débloquer un compte,118,Réaliser [9.3] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+120,Sub-task,[9.3] React Native : Bloquer ou débloquer un compte,118,Réaliser [9.3] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+121,Story,[9.4] Traiter les signalements,111,"En tant qu'administrateur, je veux traiter les signalements afin de retirer les annonces frauduleuses.
+Critères d'acceptation :
+* Liste des signalements avec motif
+* Masquer l'annonce (statut masquee) ou classer le signalement sans suite",3,Sprint 6,,membre-A,mvp,
+122,Sub-task,[9.4] Flutter : Traiter les signalements,121,Réaliser [9.4] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+123,Sub-task,[9.4] React Native : Traiter les signalements,121,Réaliser [9.4] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+124,Story,[9.5] Tableau de bord de statistiques (back-office web),111,"En tant qu'administrateur, je veux un tableau de bord afin de suivre l'activité de la plateforme.
+Critères d'acceptation :
+* Nombre d'utilisateurs, d'annonces, de messages et de signalements",5,,,membre-A,bonus,
+125,Epic,Epic 10 : Qualité et livrables,,"Tests, rapport comparatif Flutter vs React Native, soutenance. Responsable : membre A",,,,membre-A,,10 - Qualité et livrables
+126,Task,[10.1] Tests unitaires et d'intégration : authentification et recherche,125,Tests des modules authentification et recherche dans les deux versions.,3,Sprint 3,,membre-A,mvp,
+127,Sub-task,[10.1] Flutter : Tests unitaires et d'intégration : authentification et recherche,126,Réaliser [10.1] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+128,Sub-task,[10.1] React Native : Tests unitaires et d'intégration : authentification et recherche,126,Réaliser [10.1] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+129,Task,"[10.2] Tests unitaires et d'intégration : publication, messagerie, notifications",125,"Tests des modules publication, messagerie et notifications dans les deux versions. C fournit les scénarios.",3,Sprint 6,,membre-A,mvp,
+130,Sub-task,"[10.2] Flutter : Tests unitaires et d'intégration : publication, messagerie, notifications",129,Réaliser [10.2] dans la version Flutter. Les critères d'acceptation sont dans la story / tâche parente.,,,Flutter,membre-A,mvp,
+131,Sub-task,"[10.2] React Native : Tests unitaires et d'intégration : publication, messagerie, notifications",129,Réaliser [10.2] dans la version React Native. Les critères d'acceptation sont dans la story / tâche parente.,,,React Native,membre-A,mvp,
+132,Task,[10.3] Rapport comparatif Flutter vs React Native,125,"Performance, temps de développement, écosystème, difficultés rencontrées. A et C contribuent.",5,Sprint 7,Documentation,membre-B,mvp,
+133,Task,[10.4] Préparation de la soutenance et de la démo,125,Support de présentation et scénario de démonstration.,3,Sprint 7,Documentation,membre-A,mvp,

@@ -1,0 +1,288 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>DarImmo – Dossier de conception v2</title><style>
+@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: "Segoe UI", "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1b2430; line-height: 1.4; margin: 0; }
+h1 { color: #1f3a5f; font-size: 21pt; margin: 0 0 4mm; }
+h2 { color: #1f3a5f; font-size: 15pt; margin: 7mm 0 3mm; break-after: avoid; }
+h3 { color: #2b7a8c; font-size: 11.5pt; margin: 5mm 0 2mm; break-after: avoid; }
+p { margin: 1.5mm 0 2.5mm; }
+table { width: 100%; border-collapse: collapse; margin: 1mm 0 3mm; font-size: 9pt; break-inside: auto; }
+tr { break-inside: avoid; }
+th { background: #1f3a5f; color: #fff; text-align: left; padding: 4px 6px; font-weight: 600; }
+td { border: 1px solid #c9d3df; padding: 3px 6px; vertical-align: top; }
+tbody tr:nth-child(even) td { background: #eef3f8; }
+td.n, th.n { text-align: center; white-space: nowrap; }
+.muted { color: #5b6878; font-style: italic; font-size: 9pt; }
+.badge { display: inline-block; font-size: 7.5pt; font-weight: 700; padding: 0 5px; border-radius: 3px; margin-left: 4px; vertical-align: 1px; }
+.b-new { background: #d9f2e3; color: #11643a; border: 1px solid #8fd1ab; }
+.b-fix { background: #fff1d6; color: #8a5300; border: 1px solid #f0c674; }
+.note { border-left: 4px solid #2b7a8c; background: #eef6f8; padding: 2mm 3mm; margin: 2mm 0 3mm; }
+.warn { border-left: 4px solid #d98c00; background: #fff7e6; padding: 2mm 3mm; margin: 2mm 0 3mm; }
+.cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; break-after: page; }
+.cover h1 { font-size: 40pt; margin-bottom: 4mm; }
+.cover .sub { color: #5b6878; font-size: 14pt; }
+.pb { break-before: page; }
+code { font-family: Consolas, "DejaVu Sans Mono", monospace; font-size: 8.5pt; background: #eef1f5; padding: 0 3px; border-radius: 2px; }
+pre { font-family: Consolas, monospace; font-size: 8.3pt; background: #f4f6f9; border: 1px solid #d5dce5; padding: 2.5mm; white-space: pre-wrap; break-inside: avoid; }
+svg { width: 100%; height: auto; display: block; margin: 2mm 0; }
+ul { margin: 1mm 0 2mm; padding-left: 5mm; } li { margin: 0.5mm 0; }
+</style></head><body>
+<div class="cover"><h1>DarImmo</h1>
+<div class="sub">Application mobile de services immobiliers<br>Recherche, consultation et publication d'annonces</div>
+<p style="margin-top:12mm">Dossier de conception et de répartition du travail<br>Versions Flutter et React Native · Modélisation C4 · Organisation Jira</p>
+<p style="margin-top:8mm"><b>DSI2</b> - Développement des Systèmes Informatiques - ISET<br>Équipe de 3 étudiants</p>
+<p><b>Version 2 (corrigée)</b> · 4 novembre 2026<br><span class="muted">Version 1 : 15 octobre 2026</span></p></div>
+
+<h2>0. Historique des corrections (v1 → v2)</h2>
+<table><thead><tr><th style="width:22%">Section</th><th>Correction</th><th style="width:32%">Raison</th></tr></thead><tbody>
+<tr><td>3. Fonctionnalités</td><td>Réinitialisation du mot de passe et signalement ajoutés au MVP. Mode sombre déplacé en bonus. Filtre « nombre de pièces » intégré à la story 3.2. Back-office web déplacé en bonus.</td><td>Le dossier et le backlog ne listaient pas les mêmes fonctionnalités</td></tr>
+<tr><td>4. Modèle de données</td><td>Table <code>profiles</code> liée à <code>auth.users</code>, table <code>device_tokens</code>, statuts d'annonce complets, <code>motif_rejet</code>, <code>bloque</code>, colonne PostGIS, contraintes d'unicité, dates</td><td>Champs exigés par les stories 6.5, 7.1, 7.3, 8.1, 9.2, 9.3, 3.4 absents du modèle v1</td></tr>
+<tr><td>5. Choix techniques</td><td>Edge Functions pour l'envoi des push, projet Firebase obligatoire, development build Expo, choix figés (état, carte)</td><td>Supabase n'envoie pas de push FCM seul ; FCM ne marche pas dans Expo Go</td></tr>
+<tr><td>6. C4</td><td>Niveau 2 : Edge Functions ajoutées, back-office web retiré du MVP. Niveau 3 : AdminModule ajouté, ApiClient redéfini</td><td>Cohérence avec le backlog (modération dans l'application mobile)</td></tr>
+<tr><td>7. Planning</td><td>Planning unique, identique au backlog Jira. Flutter et React Native dans le même sprint</td><td>Le dossier (publication au Sprint 3) et le backlog (Sprint 1) se contredisaient ; une sous-tâche Jira suit toujours le sprint de sa story</td></tr>
+<tr><td>9 et 11. Répartition</td><td>Nouvelles tâches 1.7 (Firebase + preuve de concept, C) et 1.8 (configuration de la carte, B). 6.5 et 7.3 avancés</td><td>Risques traités au Sprint 0, dépendance carte supprimée, charge lissée</td></tr>
+<tr><td>10. Jira</td><td>Champ Assignee, import CSV, règle des sous-tâches</td><td>L'étiquette membre-X ne suffit pas pour « Assigné à moi » et les rapports</td></tr>
+<tr><td>12. Charge</td><td>Totaux recalculés à partir du backlog : A 49, B 48, C 49 pts</td><td>Les totaux v1 (37 / 39 / 37) ne correspondaient pas au backlog</td></tr>
+</tbody></table>
+
+<h2>1. Concept et positionnement</h2>
+<table><thead><tr><th style="width:25%">Élément</th><th>Proposition</th></tr></thead><tbody>
+<tr><td><b>Nom de travail</b></td><td><b>DarImmo</b> (« dar » = maison). Alternative : ImmoGo</td></tr>
+<tr><td><b>Proposition de valeur</b></td><td>Trouver, publier et négocier un bien immobilier depuis un seul endroit, avec une carte interactive et une messagerie intégrée</td></tr>
+<tr><td><b>Cibles</b></td><td>Chercheurs (acheteurs, locataires), annonceurs (particuliers, agences), administrateur (modération)</td></tr>
+<tr><td><b>Différenciation</b></td><td>Annonces vérifiées par un modérateur, recherche autour de moi, messagerie intégrée ; en bonus : zone dessinée sur la carte, alertes personnalisées, FR / AR (RTL) / EN</td></tr>
+</tbody></table>
+
+<h2>2. Acteurs et rôles</h2>
+<table><thead><tr><th style="width:25%">Acteur</th><th>Droits</th></tr></thead><tbody>
+<tr><td><b>Visiteur</b></td><td>Parcourir et rechercher les annonces publiées, voir la carte (sans contacter)</td></tr>
+<tr><td><b>Utilisateur inscrit</b></td><td>Favoris, messagerie, signalement, profil ; alertes en bonus</td></tr>
+<tr><td><b>Annonceur</b></td><td>Tout ce que fait l'utilisateur, plus publier, modifier, supprimer ses annonces et suivre leur état de validation</td></tr>
+<tr><td><b>Administrateur</b></td><td>Valider ou rejeter des annonces, traiter les signalements, bloquer des comptes (écrans réservés dans l'application mobile)</td></tr>
+</tbody></table>
+<div class="note"><b>Précision technique :</b> « annonceur » n'est pas un rôle stocké en base. Tout utilisateur inscrit peut publier. La colonne <code>profiles.role</code> ne contient que <code>utilisateur</code> ou <code>admin</code>.</div>
+
+<h2>3. Fonctionnalités par priorité</h2>
+<table><thead><tr><th style="width:18%">Module</th><th>MVP (obligatoire)</th><th>Version 2 (bonus)</th></tr></thead><tbody>
+<tr><td><b>Authentification</b></td><td>Inscription / connexion email, déconnexion, profil, <b>réinitialisation du mot de passe</b></td><td>Connexion Google, vérification téléphone (OTP)</td></tr>
+<tr><td><b>Recherche</b></td><td>Filtres : prix, ville, type (appartement, villa, terrain, local), vente ou location, nb de pièces</td><td>Tri (prix, date, distance), sauvegarde de recherches, recherche vocale</td></tr>
+<tr><td><b>Détails d'une annonce</b></td><td>Galerie photos, description, caractéristiques, prix, contact, <b>signalement</b></td><td>Visite virtuelle 360°, partage, calculateur de crédit</td></tr>
+<tr><td><b>Publication</b></td><td>Formulaire, upload de photos, choix de la position sur carte, gestion de mes annonces, état de validation</td><td>Brouillons, boost / mise en avant, duplication, statistiques</td></tr>
+<tr><td><b>Carte</b></td><td>Marqueurs des biens, « autour de moi »</td><td>Clusters, dessin de zone, itinéraire</td></tr>
+<tr><td><b>Messagerie</b></td><td>Chat 1 à 1 temps réel, historique, liste des conversations avec non-lus</td><td>Envoi de photos, indicateur « lu » sous chaque message</td></tr>
+<tr><td><b>Favoris</b></td><td>Ajouter / retirer, liste</td><td>Comparateur de 2 à 3 biens</td></tr>
+<tr><td><b>Notifications</b></td><td>Nouveau message, changement de statut d'annonce</td><td>Alerte « nouveau bien correspondant à mes critères », baisse de prix</td></tr>
+<tr><td><b>Administration</b></td><td>Modération dans l'application mobile : rôle admin, valider / rejeter, bloquer, traiter les signalements</td><td>Back-office web avec tableau de bord et statistiques</td></tr>
+<tr><td><b>Divers</b></td><td>-</td><td>Mode sombre, multi-langues avec RTL, mode hors-ligne (cache)</td></tr>
+</tbody></table>
+
+<h2 class="pb">4. Modèle de données (PostgreSQL / Supabase)</h2>
+<table><thead><tr><th style="width:17%">Table</th><th>Colonnes principales</th><th style="width:30%">Contraintes et remarques</th></tr></thead><tbody>
+<tr><td><b>profiles</b></td><td>id (uuid = auth.users.id), nom, email, telephone, photo_url, role (utilisateur | admin), bloque (bool), date_inscription</td><td>Créé par trigger à l'inscription. Le mot de passe reste géré par Supabase Auth</td></tr>
+<tr><td><b>device_tokens</b> <span class="badge b-new">NOUVEAU</span></td><td>id, id_user, token, plateforme (android | ios), date_maj</td><td>unique(token). Un utilisateur peut avoir plusieurs appareils</td></tr>
+<tr><td><b>annonces</b></td><td>id, titre, description, type_bien (appartement | villa | terrain | local), type_offre (vente | location), prix, surface, nb_pieces, adresse, ville, latitude, longitude, <b>position geography(Point, 4326)</b>, <b>statut</b>, <b>motif_rejet</b>, id_annonceur, date_creation, <b>date_maj</b></td><td>statut : brouillon | en_attente | publiee | rejetee | vendue | louee | masquee. Index GIST sur position, index sur (statut, ville, prix)</td></tr>
+<tr><td><b>photos</b></td><td>id, id_annonce, chemin_storage, url, ordre</td><td>unique(id_annonce, ordre) ; 10 photos max ; suppression en cascade</td></tr>
+<tr><td><b>favoris</b></td><td>id_user, id_annonce, date</td><td>Clé primaire (id_user, id_annonce)</td></tr>
+<tr><td><b>conversations</b></td><td>id, id_annonce, id_acheteur, id_vendeur, date_creation, <b>date_dernier_message</b></td><td>unique(id_annonce, id_acheteur) ; check(id_acheteur &lt;&gt; id_vendeur)</td></tr>
+<tr><td><b>messages</b></td><td>id, id_conversation, id_expediteur, contenu, date_envoi, lu</td><td>Realtime activé ; trigger qui met à jour date_dernier_message</td></tr>
+<tr><td><b>alertes</b></td><td>id, id_user, nom, criteres (jsonb), active</td><td>Bonus (3.6, 8.3)</td></tr>
+<tr><td><b>signalements</b></td><td>id, id_annonce, id_user, motif, statut (en_attente | traite | classe), date</td><td>unique(id_user, id_annonce)</td></tr>
+</tbody></table>
+<p><b>Relations :</b> un profil publie plusieurs annonces (1-N). Une annonce a plusieurs photos (1-N). Profils et annonces sont liés par favoris et par signalements (N-N). Une conversation relie un acheteur et un vendeur autour d'une annonce et contient plusieurs messages (1-N). Un profil possède plusieurs jetons d'appareil (1-N).</p>
+<h3>Règles de sécurité (RLS) principales</h3>
+<table><thead><tr><th style="width:17%">Table</th><th>Lecture</th><th>Écriture</th></tr></thead><tbody>
+<tr><td>annonces</td><td>Tout le monde voit les annonces <code>publiee</code> ; l'annonceur voit toutes les siennes ; l'admin voit tout</td><td>Création / modification par l'annonceur (statut forcé à en_attente) ; changement de statut de modération par l'admin seulement</td></tr>
+<tr><td>conversations, messages</td><td>Uniquement les deux participants</td><td>Uniquement les participants ; id_expediteur = utilisateur connecté</td></tr>
+<tr><td>favoris, device_tokens</td><td>Le propriétaire</td><td>Le propriétaire</td></tr>
+<tr><td>signalements</td><td>Auteur et admin</td><td>Création par un utilisateur connecté, traitement par l'admin</td></tr>
+<tr><td>profiles</td><td>Nom et photo publics</td><td>Le propriétaire (sauf role et bloque : admin seulement)</td></tr>
+</tbody></table>
+
+<h2>5. Choix techniques</h2>
+<div class="note"><b>Point clé :</b> un seul backend Supabase partagé par les deux versions (Flutter et React Native). Le serveur n'est développé qu'une fois. Supabase ne sait pas envoyer de notification push seul : un projet Firebase et une Edge Function sont nécessaires.</div>
+<table><thead><tr><th style="width:20%">Besoin</th><th>Option retenue</th><th style="width:25%">Alternative</th></tr></thead><tbody>
+<tr><td><b>Backend / BDD</b></td><td><b>Supabase</b> (PostgreSQL + PostGIS, Auth, Storage, Realtime, Edge Functions)</td><td>Firebase (Auth, Firestore, Storage)</td></tr>
+<tr><td><b>Notifications push</b></td><td>Firebase Cloud Messaging (API HTTP v1), appelé par une Edge Function Supabase <code>send-push</code> déclenchée par un Database Webhook</td><td>OneSignal</td></tr>
+<tr><td><b>Carte</b></td><td>À figer au Sprint 0 (tâche 1.8) : Google Maps (clé API, compte de facturation requis) ou OpenStreetMap (gratuit, sans clé)</td><td>-</td></tr>
+<tr><td><b>Géolocalisation</b></td><td>Flutter : geolocator / RN : expo-location</td><td>-</td></tr>
+<tr><td><b>Stockage photos</b></td><td>Supabase Storage, buckets <code>annonces-photos</code> et <code>avatars</code></td><td>Cloudinary</td></tr>
+<tr><td><b>Configuration</b></td><td>Clés dans un fichier <code>.env</code> non versionné (flutter_dotenv / variables Expo)</td><td>-</td></tr>
+</tbody></table>
+<h3>Comparatif des deux versions</h3>
+<table><thead><tr><th style="width:20%">Aspect</th><th>Flutter</th><th>React Native</th></tr></thead><tbody>
+<tr><td><b>Langage</b></td><td>Dart</td><td>TypeScript (Expo, development build)</td></tr>
+<tr><td><b>Navigation</b></td><td>go_router</td><td>React Navigation</td></tr>
+<tr><td><b>État</b></td><td>Provider (ChangeNotifier) – choix figé pour toute l'équipe</td><td>Zustand – choix figé pour toute l'équipe</td></tr>
+<tr><td><b>Carte</b></td><td>google_maps_flutter ou flutter_map (selon 1.8)</td><td>react-native-maps</td></tr>
+<tr><td><b>Backend</b></td><td>supabase_flutter</td><td>@supabase/supabase-js</td></tr>
+<tr><td><b>Photos</b></td><td>image_picker + flutter_image_compress</td><td>expo-image-picker + expo-image-manipulator</td></tr>
+<tr><td><b>Notifications</b></td><td>firebase_messaging (+ flutter_local_notifications au premier plan)</td><td>@react-native-firebase/messaging (development build obligatoire, ne marche pas dans Expo Go)</td></tr>
+</tbody></table>
+
+<h2 class="pb">6. Modélisation C4</h2>
+<p>La méthode C4 (c4model.com) décrit le système en quatre niveaux de zoom : contexte, conteneurs, composants, code.</p>
+<h3>Niveau 1 : diagramme de contexte</h3><svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" text-anchor="middle">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#5b6878"/></marker></defs>
+<g fill="#0f4c81"><rect x="20" y="15" width="210" height="80" rx="8"/><rect x="20" y="125" width="210" height="80" rx="8"/><rect x="20" y="235" width="210" height="80" rx="8"/></g>
+<rect x="330" y="105" width="220" height="120" rx="8" fill="#1d6fc2"/>
+<g fill="#7b8794"><rect x="650" y="15" width="210" height="80" rx="8"/><rect x="650" y="125" width="210" height="80" rx="8"/><rect x="650" y="235" width="210" height="80" rx="8"/></g>
+<g fill="#fff"><g font-weight="700" font-size="15"><text x="125" y="48">Chercheur</text><text x="125" y="158">Annonceur</text><text x="125" y="268">Administrateur</text>
+<text x="440" y="148">DarImmo</text><text x="755" y="48">API Cartes</text><text x="755" y="158">Firebase (FCM)</text><text x="755" y="268">Service Email</text></g>
+<g font-size="11.5"><text x="125" y="68">Recherche, consulte, discute</text><text x="125" y="178">Publie et gère ses annonces</text><text x="125" y="288">Modère dans l'application</text>
+<text x="440" y="170">Application mobile (Flutter et</text><text x="440" y="186">React Native) + backend Supabase</text>
+<text x="755" y="68">Carte et géocodage</text><text x="755" y="178">Notifications push</text><text x="755" y="288">Supabase Auth (SMTP)</text></g></g>
+<g stroke="#5b6878" stroke-width="1.6" fill="none" marker-end="url(#a)"><path d="M230,60L330,135"/><path d="M230,165L330,165"/><path d="M230,270L330,195"/><path d="M550,135L650,60"/><path d="M550,165L650,165"/><path d="M550,195L650,270"/></g>
+<g font-size="11" fill="#5b6878" font-style="italic"><text x="285" y="88">recherche, chat</text><text x="280" y="158">publie</text><text x="285" y="248">valide, bloque</text><text x="595" y="88">carte</text><text x="600" y="158">push</text><text x="598" y="248">emails</text></g>
+</svg>
+<p class="muted">Les trois acteurs utilisent l'application mobile. Elle s'appuie sur trois systèmes externes : cartes, notifications push (Firebase) et email (envoyé par Supabase Auth).</p>
+<h3>Niveau 2 : diagramme de conteneurs</h3><svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" text-anchor="middle">
+<defs><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#5b6878"/></marker></defs>
+<rect x="10" y="100" width="700" height="450" rx="8" fill="none" stroke="#5b6878" stroke-dasharray="6 4"/>
+<text x="20" y="118" text-anchor="start" font-size="12" font-weight="700" fill="#5b6878">Système DarImmo</text>
+<rect x="25" y="230" width="670" height="305" rx="8" fill="#f3f7fb" stroke="#8aa1b8" stroke-dasharray="4 3"/>
+<text x="35" y="248" text-anchor="start" font-size="11.5" font-weight="700" fill="#5b6878">Backend Supabase (partagé par les deux applications)</text>
+<g fill="#0f4c81"><rect x="150" y="15" width="180" height="58" rx="8"/><rect x="410" y="15" width="180" height="58" rx="8"/></g>
+<g fill="#1d6fc2"><rect x="120" y="130" width="200" height="62" rx="8"/><rect x="380" y="130" width="200" height="62" rx="8"/>
+<rect x="40" y="275" width="150" height="62" rx="8"/><rect x="210" y="275" width="150" height="62" rx="8"/><rect x="380" y="275" width="150" height="62" rx="8"/><rect x="550" y="275" width="130" height="62" rx="8"/>
+<rect x="550" y="420" width="130" height="70" rx="8"/></g>
+<rect x="40" y="420" width="490" height="70" rx="8" fill="#0d3a66"/>
+<g fill="#7b8794"><rect x="735" y="130" width="155" height="62" rx="8"/><rect x="735" y="275" width="155" height="62" rx="8"/><rect x="735" y="420" width="155" height="70" rx="8"/></g>
+<g fill="#fff"><g font-weight="700" font-size="13.5">
+<text x="240" y="42">Utilisateur</text><text x="500" y="42">Administrateur</text>
+<text x="220" y="157">App Flutter</text><text x="480" y="157">App React Native</text>
+<text x="115" y="302">API REST</text><text x="285" y="302">Realtime</text><text x="455" y="302">Storage</text><text x="615" y="302">Auth</text>
+<text x="285" y="450">PostgreSQL + PostGIS</text><text x="615" y="450">Edge Functions</text>
+<text x="812" y="157">API Cartes</text><text x="812" y="302">Service Email</text><text x="812" y="450">Firebase FCM</text></g>
+<g font-size="10.5"><text x="240" y="60">Chercheur ou annonceur</text><text x="500" y="60">Écrans admin dans l'app</text>
+<text x="220" y="176">Dart · client mobile v1</text><text x="480" y="176">TypeScript · client mobile v2</text>
+<text x="115" y="321">PostgREST + RPC</text><text x="285" y="321">WebSocket (chat)</text><text x="455" y="321">Photos, avatars</text><text x="615" y="321">Comptes, sessions</text>
+<text x="285" y="469">Tables, RLS, triggers, index géographiques</text><text x="615" y="469">send-push (Deno)</text>
+<text x="812" y="176">Affichage, géocodage</text><text x="812" y="321">Confirmation, mot de passe</text><text x="812" y="469">Notifications push</text></g></g>
+<g stroke="#5b6878" stroke-width="1.5" fill="none" marker-end="url(#b)">
+<path d="M240,73L220,130"/><path d="M240,73L470,130"/><path d="M500,73L240,130"/><path d="M500,73L490,130"/>
+<path d="M220,192L220,262"/><path d="M480,192L480,262"/><path d="M580,161L735,161"/>
+<path d="M115,337L115,420"/><path d="M285,420L285,337"/><path d="M455,337L455,420"/><path d="M680,306L735,306"/>
+<path d="M530,455L550,455"/><path d="M680,455L735,455"/><path d="M812,420L812,365L580,365L580,194"/></g>
+<g font-size="10.5" fill="#5b6878" font-style="italic"><text x="300" y="218">HTTPS / WebSocket (supabase_flutter, supabase-js)</text>
+<text x="657" y="153">carte (SDK)</text><text x="142" y="385">SQL</text><text x="330" y="385">changements</text><text x="490" y="385">métadonnées</text>
+<text x="700" y="358">push vers les apps</text><text x="540" y="508">trigger / webhook → Edge Function → FCM</text></g>
+</svg>
+<p class="muted">Les deux clients mobiles partagent le même backend Supabase. L'administrateur utilise les écrans réservés de l'application mobile ; un back-office web reste un bonus. Les push passent par un trigger, une Edge Function et FCM.</p>
+<h3>Niveau 3 : composants de l'application mobile</h3>
+<table><thead><tr><th style="width:22%">Composant</th><th>Responsabilité</th><th style="width:28%">Interagit avec</th></tr></thead><tbody>
+<tr><td><b>AuthModule</b></td><td>Inscription, connexion, session, mot de passe oublié</td><td>Supabase Auth</td></tr>
+<tr><td><b>SearchModule</b></td><td>Filtres, liste des résultats, pagination</td><td>SupabaseService, MapModule</td></tr>
+<tr><td><b>ListingDetailModule</b></td><td>Affichage d'une annonce, galerie, signalement</td><td>SupabaseService, ChatModule, FavoritesModule</td></tr>
+<tr><td><b>PublishModule</b></td><td>Formulaire, upload photos, choix de position, mes annonces, état de validation</td><td>SupabaseService, Storage, LocationService, MapModule</td></tr>
+<tr><td><b>MapModule</b></td><td>Composant de carte, marqueurs, « autour de moi »</td><td>API Cartes, LocationService</td></tr>
+<tr><td><b>ChatModule</b></td><td>Conversations, envoi / réception de messages</td><td>Realtime, SupabaseService</td></tr>
+<tr><td><b>FavoritesModule</b></td><td>Ajout / retrait, liste des favoris</td><td>SupabaseService</td></tr>
+<tr><td><b>ProfileModule</b></td><td>Profil, photo, paramètres</td><td>SupabaseService, Storage</td></tr>
+<tr><td><b>AdminModule</b> <span class="badge b-new">NOUVEAU</span></td><td>Annonces en attente, signalements, blocage de comptes (visible si role = admin)</td><td>SupabaseService</td></tr>
+<tr><td><b>NotificationService</b></td><td>Enregistrement du jeton, réception des push, navigation vers l'écran concerné</td><td>FCM, table device_tokens</td></tr>
+<tr><td><b>LocationService</b></td><td>Permissions et position GPS</td><td>Capteurs de l'appareil</td></tr>
+<tr><td><b>SupabaseService</b> <span class="badge b-fix">CORRIGÉ</span></td><td>Point d'accès unique au client Supabase (remplace « ApiClient » : il n'y a pas d'API HTTP maison), traduction des erreurs</td><td>Supabase</td></tr>
+<tr><td><b>LocalCache</b></td><td>Cache des annonces vues (bonus hors-ligne)</td><td>SQLite / Hive</td></tr>
+</tbody></table>
+<h3>Niveau 4 : code (classe clé)</h3>
+<p>Exemple pour <b>Annonce</b> : attributs de la section 4, plus <code>fromJson()</code>, <code>toJson()</code> et <code>copyWith()</code>. Elle est associée à un <b>AnnonceRepository</b> (<code>getAll(filters, page)</code>, <code>getById()</code>, <code>getMine()</code>, <code>create()</code>, <code>update()</code>, <code>delete()</code>, <code>uploadPhotos()</code>) appelé par un <b>AnnonceViewModel</b> (Provider en Flutter, store Zustand en React Native). Cette architecture (Model, Repository, ViewModel, View) s'applique aux deux versions.</p>
+<pre>lib/                                  src/            (React Native)
+  core/   (supabase_service, theme,     core/
+           router, location_service)    features/
+  features/                               auth/ search/ detail/ map/
+    auth/ search/ detail/ map/             publish/ chat/ favorites/
+    publish/ chat/ favorites/              profile/ admin/ notifications/
+    profile/ admin/ notifications/       (même découpage : models,
+      data/ (models, repositories)        repositories, stores, screens)
+      presentation/ (viewmodels, screens, widgets)</pre>
+
+<h2 class="pb">7. Planning agile</h2>
+<p>Ce planning est <b>identique au backlog Jira v2</b>. Dans chaque sprint, la sous-tâche Flutter est réalisée en premier, puis la sous-tâche React Native, avant la fin du même sprint.</p>
+<table><thead><tr><th class="n">Sprint</th><th>Objectif</th><th>Membre A</th><th>Membre B</th><th>Membre C</th></tr></thead><tbody><tr><td class="n"><b>0</b></td><td>Conception, BDD, backend, Firebase, carte, squelettes</td><td>[1.1] Diagrammes C4 niveaux 1 et 2 (3)<br>[1.4a] Maquettes Figma : authentification, profil, administration (2)<br>[1.5] Backend Supabase (projet, sécurité, stockage) (5)<br>[1.6] Dépôts Git et squelettes de projet (3)<br><b>13 pts</b></td><td>[1.2] Diagrammes C4 niveaux 3 et 4 (3)<br>[1.4b] Maquettes Figma : recherche, détail, carte, favoris (2)<br>[1.8] Choix et configuration de la carte (2)<br><b>7 pts</b></td><td>[1.3] Schéma de base de données, script SQL et données de test (5)<br>[1.4c] Maquettes Figma : publication, mes annonces, messagerie (1)<br>[1.7] Projet Firebase et preuve de concept temps réel / push (3)<br><b>9 pts</b></td></tr><tr><td class="n"><b>1</b></td><td>Inscription / connexion, liste, publication</td><td>[2.1] S&#x27;inscrire par email (5)<br>[2.2] Se connecter et se déconnecter (3)<br>[2.3] Modifier mon profil et ma photo (3)<br><b>11 pts</b></td><td>[3.1] Voir la liste des annonces (5)<br><b>5 pts</b></td><td>[6.1] Publier une annonce (5)<br><b>5 pts</b></td></tr><tr><td class="n"><b>2</b></td><td>Filtres, photos, mot de passe, rôle admin</td><td>[2.4] Réinitialiser mon mot de passe (3)<br>[9.1] Rôle administrateur (2)<br><b>5 pts</b></td><td>[3.2] Filtrer les annonces (8)<br><b>8 pts</b></td><td>[6.2] Ajouter des photos (5)<br><b>5 pts</b></td></tr><tr><td class="n"><b>3</b></td><td>Détail, mes annonces, état de validation, tests auth/recherche</td><td>[10.1] Tests unitaires et d&#x27;intégration : authentification et recherche (3)<br><b>3 pts</b></td><td>[3.3] Consulter le détail d&#x27;une annonce (5)<br><b>5 pts</b></td><td>[6.3] Gérer mes annonces (3)<br>[6.5] Voir l&#x27;état de validation de mes annonces (2)<br><b>5 pts</b></td></tr><tr><td class="n"><b>4</b></td><td>Carte, autour de moi, position du bien, contact, conversations, validation admin</td><td>[9.2] Valider ou rejeter une annonce (5)<br><b>5 pts</b></td><td>[4.1] Voir les annonces sur une carte (5)<br>[4.2] Voir les biens autour de moi (5)<br><b>10 pts</b></td><td>[6.4] Placer mon bien sur la carte (3)<br>[7.1] Contacter l&#x27;annonceur depuis une annonce (3)<br>[7.3] Voir mes conversations (3)<br><b>9 pts</b></td></tr><tr><td class="n"><b>5</b></td><td>Chat temps réel, favoris, signalement, blocage</td><td>[9.3] Bloquer ou débloquer un compte (3)<br><b>3 pts</b></td><td>[3.4] Signaler une annonce (3)<br>[5.1] Ajouter ou retirer une annonce des favoris (3)<br>[5.2] Consulter mes favoris (2)<br><b>8 pts</b></td><td>[7.2] Échanger en temps réel (8)<br><b>8 pts</b></td></tr><tr><td class="n"><b>6</b></td><td>Notifications, signalements, tests, finitions</td><td>[9.4] Traiter les signalements (3)<br>[10.2] Tests unitaires et d&#x27;intégration : publication, messagerie, notifications (3)<br><b>6 pts</b></td><td><span class=muted>appui, bonus, corrections</span><br><b>0 pts</b></td><td>[8.1] Être notifié d&#x27;un nouveau message (5)<br>[8.2] Être notifié du changement de statut de mon annonce (3)<br><b>8 pts</b></td></tr><tr><td class="n"><b>7</b></td><td>Rapport comparatif, soutenance</td><td>[10.4] Préparation de la soutenance et de la démo (3)<br><b>3 pts</b></td><td>[10.3] Rapport comparatif Flutter vs React Native (5)<br><b>5 pts</b></td><td><span class=muted>appui, bonus, corrections</span><br><b>0 pts</b></td></tr></tbody></table>
+<div class="warn"><b>Charge réelle :</b> chaque story est codée deux fois. Si les sprints d'une semaine sont trop courts, passer à des sprints de deux semaines plutôt que de séparer Flutter et React Native : en Jira, une sous-tâche suit toujours le sprint de sa story parente.</div>
+
+<h2>8. Stratégie de tests</h2>
+<table><thead><tr><th style="width:28%">Type</th><th>Outils et contenu</th></tr></thead><tbody>
+<tr><td><b>Unitaires</b></td><td>flutter_test / Jest : modèles (fromJson / toJson), validations de formulaire, ViewModels</td></tr>
+<tr><td><b>Widgets / composants</b></td><td>flutter_test / React Native Testing Library</td></tr>
+<tr><td><b>Intégration / E2E</b></td><td>integration_test / Detox (ou Maestro)</td></tr>
+<tr><td><b>Sécurité de la base</b></td><td>Scénarios SQL : un utilisateur ne lit pas les messages d'une autre conversation, ne modifie pas l'annonce d'un autre, un visiteur ne voit pas les annonces en attente</td></tr>
+<tr><td><b>Manuels</b></td><td>Scénarios : créer un compte, publier, faire valider par l'admin, chercher, discuter, recevoir une notification. Données de test fournies par le script seed (1.3)</td></tr>
+</tbody></table>
+
+<h2 class="pb">9. Répartition à 3 membres</h2>
+<p>Chaque version (Flutter et React Native) doit être maîtrisée par tous pour la soutenance. La répartition se fait donc <b>par modules fonctionnels</b> : chacun développe ses modules dans les deux frameworks.</p>
+<table><thead><tr><th style="width:8%">Membre</th><th>Modules</th><th style="width:38%">Responsabilités transverses</th></tr></thead><tbody>
+<tr><td><b>A</b></td><td>Authentification, profil, rôles, modération dans l'app, mise en place de Supabase</td><td>Scrum Master, tests, dépôts Git</td></tr>
+<tr><td><b>B</b></td><td>Recherche, filtres, détails, signalement, favoris, carte, géolocalisation, configuration de la carte</td><td>Product Owner, cohérence des maquettes, rapport comparatif Flutter vs RN</td></tr>
+<tr><td><b>C</b></td><td>Publication, upload photos, mes annonces, messagerie, notifications, Firebase</td><td>Tech Lead BDD (schéma, script SQL, RLS de ses tables, données de test)</td></tr>
+</tbody></table>
+<h3>Répartition de la conception</h3>
+<table><thead><tr><th>Livrable</th><th class=n>Responsable</th><th class=n>Relecture</th></tr></thead><tbody>
+<tr><td>C4 niveaux 1 et 2</td><td class=n>A</td><td class=n>B</td></tr>
+<tr><td>C4 niveaux 3 et 4</td><td class=n>B</td><td class=n>C</td></tr>
+<tr><td>Schéma de BDD, script SQL, RLS, données de test</td><td class=n>C</td><td class=n>A</td></tr>
+<tr><td>Projet Firebase et preuve de concept temps réel / push</td><td class=n>C</td><td class=n>A</td></tr>
+<tr><td>Choix et configuration de la carte</td><td class=n>B</td><td class=n>C</td></tr>
+<tr><td>Maquettes : chacun dessine les écrans de ses modules</td><td class=n>A, B, C</td><td class=n>B (cohérence)</td></tr>
+</tbody></table>
+
+<h2>10. Configuration de Jira</h2>
+<table><thead><tr><th class=n style="width:7%">Étape</th><th>Action</th></tr></thead><tbody>
+<tr><td class=n>1</td><td>Créer un compte sur atlassian.com, puis un site Jira (gratuit jusqu'à 10 utilisateurs)</td></tr>
+<tr><td class=n>2</td><td><b>Créer un projet</b> : modèle <b>Scrum</b>, nom <i>DarImmo</i>, clé <b>IMM</b></td></tr>
+<tr><td class=n>3</td><td><b>Inviter</b> les 2 autres membres</td></tr>
+<tr><td class=n>4</td><td>Colonnes du tableau : À faire, En cours, En revue, Terminé</td></tr>
+<tr><td class=n>5</td><td>Composants : Flutter, React Native, Backend, Design, Documentation</td></tr>
+<tr><td class=n>6</td><td>Étiquettes : mvp, bonus, bug, urgent, bloqué, membre-A / B / C</td></tr>
+<tr><td class=n>7</td><td><b>Importer</b> le fichier <code>DarImmo_backlog_jira_v2.csv</code> (Paramètres Jira, Système, Importation externe, CSV) ou saisir les tickets à la main</td></tr>
+<tr><td class=n>8</td><td>Renseigner le champ <b>Assignee</b> de chaque ticket <span class="badge b-new">NOUVEAU</span> : l'étiquette membre-X ne suffit pas pour le filtre « Assigné à moi » et les rapports</td></tr>
+<tr><td class=n>9</td><td>Créer Sprint 0 à Sprint 7 et y glisser les stories. Les sous-tâches suivent automatiquement le sprint de leur story</td></tr>
+<tr><td class=n>10</td><td>Activer l'<b>intégration GitHub</b> pour lier commits et tickets</td></tr>
+</tbody></table>
+<h3>Conventions à adopter</h3>
+<table><thead><tr><th style="width:24%">Sujet</th><th>Règle</th></tr></thead><tbody>
+<tr><td><b>Format d'une story</b></td><td>« En tant que [rôle], je veux [action] afin de [bénéfice] »</td></tr>
+<tr><td><b>Estimation</b></td><td>Story points (1, 2, 3, 5, 8), estimés ensemble (planning poker)</td></tr>
+<tr><td><b>Branches Git</b></td><td>feature/IMM-12-login-flutter, feature/IMM-12-login-rn (IMM-12 = clé Jira réelle après import)</td></tr>
+<tr><td><b>Messages de commit</b></td><td>IMM-12: ajout écran de connexion</td></tr>
+<tr><td><b>Revue de code</b></td><td>A relit B, B relit C, C relit A (une Pull Request par sous-tâche)</td></tr>
+<tr><td><b>Definition of Done</b></td><td>Fonctionne sur émulateur, critères d'acceptation vérifiés, testé, relu, mergé dans develop, ticket en « Terminé »</td></tr>
+<tr><td><b>Durée de sprint</b></td><td>1 semaine (2 si les cours sont chargés), identique pour toute l'équipe</td></tr>
+</tbody></table>
+<h3>Rituels</h3>
+<table><thead><tr><th>Rituel</th><th>Fréquence</th><th>Durée</th><th>Contenu</th></tr></thead><tbody>
+<tr><td><b>Sprint Planning</b></td><td>Début de sprint</td><td>30 min</td><td>Choisir les stories, estimer</td></tr>
+<tr><td><b>Daily (asynchrone WhatsApp / Discord)</b></td><td>Chaque jour</td><td>5 min</td><td>Fait hier / prévu aujourd'hui / blocages</td></tr>
+<tr><td><b>Sprint Review</b></td><td>Fin de sprint</td><td>20 min</td><td>Démo de ce qui fonctionne</td></tr>
+<tr><td><b>Rétrospective</b></td><td>Fin de sprint</td><td>15 min</td><td>Ce qui va, ce qui ne va pas, actions</td></tr>
+</tbody></table>
+
+<h2 class="pb">11. Backlog MVP (résumé du backlog Jira v2)</h2>
+<p class="muted">Chaque story a deux sous-tâches (Flutter et React Native). Les points correspondent à la story entière. Le détail des critères d'acceptation se trouve dans le backlog Jira v2.</p>
+<h3>Epic 1 : Conception et mise en place</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[1.1] Diagrammes C4 niveaux 1 et 2<span class="badge b-fix">CORRIGÉ</span></td><td class=n>A</td><td class=n>3</td><td class=n>0</td></tr><tr><td>[1.2] Diagrammes C4 niveaux 3 et 4</td><td class=n>B</td><td class=n>3</td><td class=n>0</td></tr><tr><td>[1.3] Schéma de base de données, script SQL et données de test<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>5</td><td class=n>0</td></tr><tr><td>[1.4a] Maquettes Figma : authentification, profil, administration</td><td class=n>A</td><td class=n>2</td><td class=n>0</td></tr><tr><td>[1.4b] Maquettes Figma : recherche, détail, carte, favoris</td><td class=n>B</td><td class=n>2</td><td class=n>0</td></tr><tr><td>[1.4c] Maquettes Figma : publication, mes annonces, messagerie</td><td class=n>C</td><td class=n>1</td><td class=n>0</td></tr><tr><td>[1.5] Backend Supabase (projet, sécurité, stockage)<span class="badge b-fix">CORRIGÉ</span></td><td class=n>A</td><td class=n>5</td><td class=n>0</td></tr><tr><td>[1.6] Dépôts Git et squelettes de projet</td><td class=n>A</td><td class=n>3</td><td class=n>0</td></tr><tr><td>[1.7] Projet Firebase et preuve de concept temps réel / push<span class="badge b-new">NOUVEAU</span></td><td class=n>C</td><td class=n>3</td><td class=n>0</td></tr><tr><td>[1.8] Choix et configuration de la carte<span class="badge b-new">NOUVEAU</span></td><td class=n>B</td><td class=n>2</td><td class=n>0</td></tr></tbody></table><h3>Epic 2 : Authentification et profil</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[2.1] S&#x27;inscrire par email</td><td class=n>A</td><td class=n>5</td><td class=n>1</td></tr><tr><td>[2.2] Se connecter et se déconnecter</td><td class=n>A</td><td class=n>3</td><td class=n>1</td></tr><tr><td>[2.3] Modifier mon profil et ma photo</td><td class=n>A</td><td class=n>3</td><td class=n>1</td></tr><tr><td>[2.4] Réinitialiser mon mot de passe</td><td class=n>A</td><td class=n>3</td><td class=n>2</td></tr></tbody></table><h3>Epic 3 : Recherche et consultation</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[3.1] Voir la liste des annonces<span class="badge b-fix">CORRIGÉ</span></td><td class=n>B</td><td class=n>5</td><td class=n>1</td></tr><tr><td>[3.2] Filtrer les annonces<span class="badge b-fix">CORRIGÉ</span></td><td class=n>B</td><td class=n>8</td><td class=n>2</td></tr><tr><td>[3.3] Consulter le détail d&#x27;une annonce</td><td class=n>B</td><td class=n>5</td><td class=n>3</td></tr><tr><td>[3.4] Signaler une annonce</td><td class=n>B</td><td class=n>3</td><td class=n>5</td></tr></tbody></table><h3>Epic 4 : Carte et géolocalisation</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[4.1] Voir les annonces sur une carte</td><td class=n>B</td><td class=n>5</td><td class=n>4</td></tr><tr><td>[4.2] Voir les biens autour de moi</td><td class=n>B</td><td class=n>5</td><td class=n>4</td></tr></tbody></table><h3>Epic 5 : Favoris</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[5.1] Ajouter ou retirer une annonce des favoris</td><td class=n>B</td><td class=n>3</td><td class=n>5</td></tr><tr><td>[5.2] Consulter mes favoris</td><td class=n>B</td><td class=n>2</td><td class=n>5</td></tr></tbody></table><h3>Epic 6 : Publication d&#x27;annonces</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[6.1] Publier une annonce<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>5</td><td class=n>1</td></tr><tr><td>[6.2] Ajouter des photos<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>5</td><td class=n>2</td></tr><tr><td>[6.3] Gérer mes annonces<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>3</td><td class=n>3</td></tr><tr><td>[6.4] Placer mon bien sur la carte<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>3</td><td class=n>4</td></tr><tr><td>[6.5] Voir l&#x27;état de validation de mes annonces<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>2</td><td class=n>3</td></tr></tbody></table><h3>Epic 7 : Messagerie</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[7.1] Contacter l&#x27;annonceur depuis une annonce</td><td class=n>C</td><td class=n>3</td><td class=n>4</td></tr><tr><td>[7.2] Échanger en temps réel</td><td class=n>C</td><td class=n>8</td><td class=n>5</td></tr><tr><td>[7.3] Voir mes conversations<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>3</td><td class=n>4</td></tr></tbody></table><h3>Epic 8 : Notifications</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[8.1] Être notifié d&#x27;un nouveau message<span class="badge b-fix">CORRIGÉ</span></td><td class=n>C</td><td class=n>5</td><td class=n>6</td></tr><tr><td>[8.2] Être notifié du changement de statut de mon annonce</td><td class=n>C</td><td class=n>3</td><td class=n>6</td></tr></tbody></table><h3>Epic 9 : Administration et modération</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[9.1] Rôle administrateur</td><td class=n>A</td><td class=n>2</td><td class=n>2</td></tr><tr><td>[9.2] Valider ou rejeter une annonce</td><td class=n>A</td><td class=n>5</td><td class=n>4</td></tr><tr><td>[9.3] Bloquer ou débloquer un compte</td><td class=n>A</td><td class=n>3</td><td class=n>5</td></tr><tr><td>[9.4] Traiter les signalements</td><td class=n>A</td><td class=n>3</td><td class=n>6</td></tr></tbody></table><h3>Epic 10 : Qualité et livrables</h3><table><thead><tr><th>Story / tâche</th><th class=n>Resp.</th><th class=n>Pts</th><th class=n>Sprint</th></tr></thead><tbody><tr><td>[10.1] Tests unitaires et d&#x27;intégration : authentification et recherche</td><td class=n>A</td><td class=n>3</td><td class=n>3</td></tr><tr><td>[10.2] Tests unitaires et d&#x27;intégration : publication, messagerie, notifications</td><td class=n>A</td><td class=n>3</td><td class=n>6</td></tr><tr><td>[10.3] Rapport comparatif Flutter vs React Native</td><td class=n>B</td><td class=n>5</td><td class=n>7</td></tr><tr><td>[10.4] Préparation de la soutenance et de la démo</td><td class=n>A</td><td class=n>3</td><td class=n>7</td></tr></tbody></table><h3>Stories bonus (sans sprint, à planifier si le MVP est terminé)</h3><table><thead><tr><th>Story</th><th class=n>Resp.</th><th class=n>Pts</th></tr></thead><tbody><tr><td>[2.5] Connexion Google et vérification du téléphone (OTP)</td><td class=n>A</td><td class=n>5</td></tr><tr><td>[2.6] Mode sombre<span class="badge b-new">NOUVEAU</span></td><td class=n>A</td><td class=n>2</td></tr><tr><td>[3.5] Trier les résultats</td><td class=n>B</td><td class=n>3</td></tr><tr><td>[3.6] Sauvegarder une recherche</td><td class=n>B</td><td class=n>5</td></tr><tr><td>[3.7] Recherche vocale</td><td class=n>B</td><td class=n>3</td></tr><tr><td>[3.8] Partager une annonce</td><td class=n>B</td><td class=n>2</td></tr><tr><td>[3.9] Calculateur de crédit</td><td class=n>B</td><td class=n>3</td></tr><tr><td>[3.10] Visite virtuelle 360°</td><td class=n>B</td><td class=n>5</td></tr><tr><td>[4.3] Regrouper les marqueurs (clusters)</td><td class=n>B</td><td class=n>3</td></tr><tr><td>[4.4] Dessiner une zone de recherche</td><td class=n>B</td><td class=n>8</td></tr><tr><td>[4.5] Itinéraire vers un bien</td><td class=n>B</td><td class=n>3</td></tr><tr><td>[5.3] Comparer plusieurs biens</td><td class=n>B</td><td class=n>5</td></tr><tr><td>[6.6] Brouillons d&#x27;annonces</td><td class=n>C</td><td class=n>3</td></tr><tr><td>[6.7] Dupliquer une annonce</td><td class=n>C</td><td class=n>2</td></tr><tr><td>[6.8] Mettre une annonce en avant (boost)</td><td class=n>C</td><td class=n>5</td></tr><tr><td>[6.9] Statistiques de mes annonces</td><td class=n>C</td><td class=n>5</td></tr><tr><td>[7.4] Envoyer des photos dans le chat</td><td class=n>C</td><td class=n>5</td></tr><tr><td>[7.5] Indicateur « lu »</td><td class=n>C</td><td class=n>3</td></tr><tr><td>[8.3] Alerte nouveau bien selon mes critères</td><td class=n>C</td><td class=n>8</td></tr><tr><td>[8.4] Alerte de baisse de prix</td><td class=n>C</td><td class=n>3</td></tr><tr><td>[9.5] Tableau de bord de statistiques (back-office web)</td><td class=n>A</td><td class=n>5</td></tr></tbody></table>
+
+<h2 class="pb">12. Dépendances et charge par membre</h2>
+<h3>Dépendances à surveiller</h3>
+<table><thead><tr><th style="width:42%">Dépendance</th><th>Solution</th></tr></thead><tbody>
+<tr><td>Tous dépendent du schéma de BDD et du backend</td><td>Script SQL de C (1.3) puis configuration de A (1.5) au <b>Sprint 0</b></td></tr>
+<tr><td>B (3.1) et C (6.1) ont besoin de l'authentification de A, réalisée au même Sprint 1</td><td>Comptes de test créés à la main dans Supabase et données de test (seed) en attendant</td></tr>
+<tr><td>« Placer mon bien sur la carte » (C, 6.4) et la carte (B, 4.1) sont au Sprint 4</td><td>Le composant de carte commun est livré au Sprint 0 (1.8, B) : plus de dépendance dans le sprint</td></tr>
+<tr><td>« Contacter l'annonceur » (C, 7.1) a besoin de l'écran de détail (B, 3.3)</td><td>3.3 au Sprint 3, 7.1 au Sprint 4</td></tr>
+<tr><td>Validation par l'admin (A, 9.2) et notification de statut (C, 8.2)</td><td>9.2 au Sprint 4, 8.2 au Sprint 6 ; 6.5 se teste avant en modifiant le statut à la main</td></tr>
+<tr><td>Traitement des signalements (A, 9.4) a besoin du signalement (B, 3.4)</td><td>3.4 au Sprint 5, 9.4 au Sprint 6</td></tr>
+<tr><td>Notifications push (C, 8.1 et 8.2)</td><td>Risque levé dès le Sprint 0 par la preuve de concept 1.7</td></tr>
+<tr><td>Conflits Git sur les squelettes</td><td>Un dossier par module (features/auth, features/publish...), fichiers partagés (router, thème) modifiés par Pull Request</td></tr>
+</tbody></table>
+<h3>Charge par membre (story points MVP)</h3>
+<table><thead><tr><th>Membre</th><th>Détail</th><th class=n>Total</th></tr></thead><tbody><tr><td><b>A</b></td><td>Epic 1 : 13 pts · Epic 2 : 14 pts · Epic 9 : 13 pts · Epic 10 : 9 pts</td><td class=n><b>49</b></td></tr><tr><td><b>B</b></td><td>Epic 1 : 7 pts · Epic 3 : 21 pts · Epic 4 : 10 pts · Epic 5 : 5 pts · Epic 10 : 5 pts</td><td class=n><b>48</b></td></tr><tr><td><b>C</b></td><td>Epic 1 : 9 pts · Epic 6 : 18 pts · Epic 7 : 14 pts · Epic 8 : 8 pts</td><td class=n><b>49</b></td></tr></tbody></table>
+<p class="muted">Les totaux sont équilibrés. À ajuster en planning poker, en déplaçant une story d'un membre à l'autre si besoin. Les stories bonus ne sont pas comptées.</p>
+<h3>Vues Jira utiles</h3>
+<table><thead><tr><th style="width:30%">Vue</th><th>Usage</th></tr></thead><tbody>
+<tr><td><b>Tableau (Board)</b></td><td>Suivi quotidien</td></tr>
+<tr><td><b>Backlog</b></td><td>Planification des sprints</td></tr>
+<tr><td><b>Chronologie (Timeline)</b></td><td>Vue d'ensemble des epics, utile pour la soutenance</td></tr>
+<tr><td><b>Rapports, Burndown</b></td><td>Preuve d'avancement agile</td></tr>
+<tr><td><b>Filtre « Assigné à moi »</b></td><td>Chacun voit ses tâches (nécessite le champ Assignee)</td></tr>
+</tbody></table>
+</body></html>
