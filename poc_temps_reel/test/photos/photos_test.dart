@@ -135,7 +135,7 @@ void main() {
 
   group('Écran Photos (maquette C2)', () {
     Future<void> ouvrir(WidgetTester tester, FauxPhotosRepository repo, FausseGalerie galerie,
-        {Future<String?> Function()? onValider, void Function(bool?)? retour}) async {
+        {Future<bool> Function(BuildContext)? onSuivant, void Function(bool?)? retour}) async {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -149,8 +149,7 @@ void main() {
                   repository: repo,
                   idAnnonce: 'a1',
                   choisir: galerie.choisir,
-                  libelleBouton: 'Envoyer pour validation',
-                  onValider: onValider ?? () async => null,
+                  onSuivant: onSuivant ?? (_) async => true,
                 ),
               ));
               retour?.call(r);
@@ -184,7 +183,7 @@ void main() {
 
       expect(find.text('Échec'), findsOneWidget);
       expect(find.textContaining('Touchez « Réessayer »'), findsOneWidget);
-      final bouton = find.widgetWithText(FilledButton, 'Envoyer pour validation');
+      final bouton = find.widgetWithText(FilledButton, 'Continuer');
       expect(tester.widget<FilledButton>(bouton).onPressed, isNull);
 
       await tester.tap(find.text('Réessayer'));
@@ -203,26 +202,27 @@ void main() {
       expect(repo.supprimees, ['p0']);
     });
 
-    testWidgets('valider : appelle l’action puis ferme avec true', (tester) async {
+    testWidgets('« Continuer » : étape suivante terminée -> ferme avec true', (tester) async {
       var appels = 0;
       bool? retour;
-      await ouvrir(tester, FauxPhotosRepository(), FausseGalerie(), onValider: () async {
+      await ouvrir(tester, FauxPhotosRepository(), FausseGalerie(), onSuivant: (_) async {
         appels++;
-        return null;
+        return true;
       }, retour: (r) => retour = r);
-      await tester.tap(find.text('Envoyer pour validation'));
+      expect(find.text('Étape 2 sur 3'), findsOneWidget);
+      await tester.tap(find.text('Continuer'));
       await tester.pumpAndSettle();
       expect(appels, 1);
       expect(retour, isTrue);
     });
 
-    testWidgets('valider en erreur : message affiché, on reste sur l’écran', (tester) async {
-      await ouvrir(tester, FauxPhotosRepository(), FausseGalerie(),
-          onValider: () async => 'Changement de statut non autorisé');
-      await tester.tap(find.text('Envoyer pour validation'));
+    testWidgets('« Continuer » : retour depuis l’étape suivante -> on reste sur les photos', (tester) async {
+      await ouvrir(tester, FauxPhotosRepository(), FausseGalerie(), onSuivant: (_) async => false);
+      await tester.tap(find.text('Continuer'));
       await tester.pumpAndSettle();
-      expect(find.text('Changement de statut non autorisé'), findsOneWidget);
-      expect(find.text('Étape 2 sur 2'), findsOneWidget);
+      expect(find.text('Étape 2 sur 3'), findsOneWidget);
+      final bouton = find.widgetWithText(FilledButton, 'Continuer');
+      expect(tester.widget<FilledButton>(bouton).onPressed, isNotNull, reason: 'bouton de nouveau actif');
     });
   });
 }

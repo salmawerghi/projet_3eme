@@ -28,8 +28,12 @@ abstract class AnnonceRepository {
   /// (une annonce publiée modifiée revient « en attente » par le trigger).
   Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs);
 
-  /// Fin du parcours : brouillon ou rejetée -> « en attente » de validation.
-  Future<Annonce> envoyerEnValidation(String idAnnonce);
+  /// Fin du parcours (étape 3, story 6.4) : enregistre latitude / longitude
+  /// (le trigger annonces_position calcule la colonne PostGIS « position »)
+  /// et, si [envoyerEnValidation], passe brouillon / rejetée -> « en attente ».
+  /// Une seule requête : jamais d'annonce envoyée sans sa position.
+  Future<Annonce> finaliser(String idAnnonce,
+      {required double latitude, required double longitude, required bool envoyerEnValidation});
 }
 
 class SupabaseAnnonceRepository implements AnnonceRepository {
@@ -67,7 +71,13 @@ class SupabaseAnnonceRepository implements AnnonceRepository {
       _mettreAJour(edition.id, valeurs.versContenu());
 
   @override
-  Future<Annonce> envoyerEnValidation(String idAnnonce) => _mettreAJour(idAnnonce, {'statut': 'en_attente'});
+  Future<Annonce> finaliser(String idAnnonce,
+          {required double latitude, required double longitude, required bool envoyerEnValidation}) =>
+      _mettreAJour(idAnnonce, {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (envoyerEnValidation) 'statut': 'en_attente',
+      });
 
   Future<Annonce> _mettreAJour(String id, Map<String, dynamic> valeurs) async {
     if (_client.auth.currentUser == null) {

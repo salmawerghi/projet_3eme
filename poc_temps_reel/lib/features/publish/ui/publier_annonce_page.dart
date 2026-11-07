@@ -10,7 +10,9 @@
 //
 // Parcours (avec la 6.2) :
 //   1. Informations -> « Continuer » : annonce enregistrée en BROUILLON
-//   2. Photos (PhotosAnnoncePage) -> « Envoyer pour validation » : EN ATTENTE
+//   2. Photos (PhotosAnnoncePage, 6.2) -> « Continuer »
+//   3. Emplacement (PositionAnnoncePage, 6.4) -> « Envoyer pour validation » :
+//      position enregistrée + EN ATTENTE
 //      puis écran « Annonce envoyée ! »
 // =====================================================================
 import 'package:flutter/material.dart';
@@ -21,6 +23,9 @@ import '../../../core/darimmo_theme.dart';
 import '../../photos/choisir_photos.dart';
 import '../../photos/data/photos_repository.dart';
 import '../../photos/ui/photos_annonce_page.dart';
+import '../../position/data/geocodage.dart';
+import '../../position/data/localisation.dart';
+import '../../position/ui/position_annonce_page.dart';
 import '../data/annonce_repository.dart';
 import '../models/annonce.dart';
 import '../publier_annonce_view_model.dart';
@@ -36,26 +41,35 @@ class PublierAnnoncePage extends StatelessWidget {
     required this.repository,
     required this.photosRepository,
     this.choisirPhotos = choisirDansLaGalerie,
+    this.geocodage,
+    this.localisation = const GeolocatorLocalisation(),
+    this.afficherTuiles = true,
     this.edition,
   });
   final AnnonceRepository repository;
+  final EditionAnnonce? edition;
+
+  // Étape 2 (6.2)
   final PhotosRepository photosRepository;
   final ChoisirPhotos choisirPhotos;
-  final EditionAnnonce? edition;
+
+  // Étape 3 (6.4) ; null = Nominatim (OpenStreetMap)
+  final Geocodage? geocodage;
+  final Localisation localisation;
+  final bool afficherTuiles; // false dans les tests
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => PublierAnnonceViewModel(repository, edition: edition),
-      child: _Formulaire(photosRepository: photosRepository, choisirPhotos: choisirPhotos),
+      child: _Formulaire(page: this),
     );
   }
 }
 
 class _Formulaire extends StatefulWidget {
-  const _Formulaire({required this.photosRepository, required this.choisirPhotos});
-  final PhotosRepository photosRepository;
-  final ChoisirPhotos choisirPhotos;
+  const _Formulaire({required this.page});
+  final PublierAnnoncePage page;
   @override
   State<_Formulaire> createState() => _FormulaireState();
 }
@@ -68,6 +82,7 @@ class _FormulaireState extends State<_Formulaire> {
   final _adresse = TextEditingController();
   final _ville = TextEditingController();
   final _description = TextEditingController();
+  late final Geocodage _geocodage = widget.page.geocodage ?? NominatimGeocodage();
 
   @override
   void initState() {
@@ -111,15 +126,28 @@ class _FormulaireState extends State<_Formulaire> {
     ));
     if (annonce == null || !mounted) return;
 
-    // Étape 2 : photos. `true` = l'utilisateur a terminé ; null = retour au formulaire.
+    // Étapes 2 (photos) puis 3 (emplacement). `true` = parcours terminé ;
+    // null = l'utilisateur est revenu au formulaire.
+    final page = widget.page;
     final termine = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => PhotosAnnoncePage(
-        repository: widget.photosRepository,
+        repository: page.photosRepository,
         idAnnonce: annonce.id,
-        choisir: widget.choisirPhotos,
-        libelleBouton: vm.libelleValidation,
-        iconeBouton: vm.libelleValidation == 'Terminer' ? Icons.check_rounded : Icons.send_rounded,
-        onValider: vm.valider,
+        choisir: page.choisirPhotos,
+        onSuivant: (ctx) async =>
+            await Navigator.of(ctx).push<bool>(MaterialPageRoute(
+              builder: (_) => PositionAnnoncePage(
+                geocodage: _geocodage,
+                localisation: page.localisation,
+                afficherTuiles: page.afficherTuiles,
+                positionInitiale: vm.positionInitiale,
+                rechercheInitiale: vm.rechercheInitiale,
+                libelleBouton: vm.libelleValidation,
+                iconeBouton: vm.libelleValidation == 'Terminer' ? Icons.check_rounded : Icons.send_rounded,
+                onValider: vm.finaliser,
+              ),
+            )) ==
+            true,
       ),
     ));
     if (termine != true || !mounted) return;
@@ -169,7 +197,7 @@ class _FormulaireState extends State<_Formulaire> {
         ),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(titreEcran, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const Text('Étape 1 sur 2 · Informations',
+          const Text('Étape 1 sur 3 · Informations',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DarColors.muted)),
         ]),
       ),

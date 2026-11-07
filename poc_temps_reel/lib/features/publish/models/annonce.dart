@@ -102,9 +102,19 @@ class NouvelleAnnonce {
 /// [6.3] Annonce déjà enregistrée, ouverte dans le formulaire de la 6.1
 /// pour être modifiée.
 class EditionAnnonce {
-  const EditionAnnonce({required this.id, required this.statut, required this.valeurs});
+  const EditionAnnonce({
+    required this.id,
+    required this.statut,
+    required this.valeurs,
+    this.latitude,
+    this.longitude,
+  });
   final String id;
   final StatutAnnonce statut;
+
+  /// [6.4] Position déjà enregistrée (null si l'annonce n'en a pas encore).
+  final double? latitude;
+  final double? longitude;
 
   /// Valeurs actuelles, qui pré-remplissent le formulaire.
   final NouvelleAnnonce valeurs;
@@ -117,8 +127,14 @@ class EditionAnnonce {
   /// sinon le trigger refuse la transition publiee -> en_attente.
   bool get renvoyerEnValidation => statut == StatutAnnonce.rejetee || statut == StatutAnnonce.brouillon;
 
-  EditionAnnonce copie({StatutAnnonce? statut, NouvelleAnnonce? valeurs}) =>
-      EditionAnnonce(id: id, statut: statut ?? this.statut, valeurs: valeurs ?? this.valeurs);
+  EditionAnnonce copie({StatutAnnonce? statut, NouvelleAnnonce? valeurs, double? latitude, double? longitude}) =>
+      EditionAnnonce(
+        id: id,
+        statut: statut ?? this.statut,
+        valeurs: valeurs ?? this.valeurs,
+        latitude: latitude ?? this.latitude,
+        longitude: longitude ?? this.longitude,
+      );
 }
 
 /// Annonce telle que renvoyée par la base après l'insertion.

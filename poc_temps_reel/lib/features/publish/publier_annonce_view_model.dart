@@ -7,6 +7,7 @@
 // Les champs texte restent dans le Form de l'écran (TextEditingController).
 // =====================================================================
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'data/annonce_repository.dart';
 import 'models/annonce.dart';
@@ -80,7 +81,8 @@ class PublierAnnonceViewModel extends ChangeNotifier {
       final e = edition;
       final a = e == null ? await _repository.creerBrouillon(annonce) : await _repository.modifier(e, annonce);
       enregistree = a;
-      edition = EditionAnnonce(id: a.id, statut: a.statut, valeurs: annonce);
+      edition = EditionAnnonce(
+          id: a.id, statut: a.statut, valeurs: annonce, latitude: e?.latitude, longitude: e?.longitude);
       return a;
     } on PublicationException catch (e) {
       erreur = e.message;
@@ -91,22 +93,36 @@ class PublierAnnonceViewModel extends ChangeNotifier {
     }
   }
 
-  /// Bouton final de l'étape 2 : « Envoyer / Renvoyer pour validation »
-  /// (brouillon ou rejetée) ou « Terminer » (rien à changer).
+  /// Bouton final (étape 3) : « Envoyer / Renvoyer pour validation »
+  /// (brouillon ou rejetée) ou « Terminer » (publiée / en attente).
   String get libelleValidation {
     if (!(edition?.renvoyerEnValidation ?? true)) return 'Terminer';
     return creation || edition?.statut == StatutAnnonce.brouillon ? 'Envoyer pour validation' : 'Renvoyer pour validation';
   }
 
-  /// Fin du parcours (étape 2). Renvoie null si tout va bien, sinon le message d'erreur.
-  Future<String?> valider() async {
+  /// [6.4] Position déjà enregistrée (modification), sinon null.
+  LatLng? get positionInitiale {
+    final e = edition;
+    return (e?.latitude == null || e?.longitude == null) ? null : LatLng(e!.latitude!, e.longitude!);
+  }
+
+  /// [6.4] Adresse de l'étape 1, pour centrer la carte d'une annonce sans position.
+  String? get rechercheInitiale {
+    final v = edition?.valeurs;
+    if (v == null) return null;
+    return [v.adresse, v.ville].where((s) => s != null && s.trim().isNotEmpty).join(', ');
+  }
+
+  /// Fin du parcours (étape 3) : enregistre la position et, si besoin, envoie
+  /// en validation, en une seule requête. null si tout va bien, sinon le message d'erreur.
+  Future<String?> finaliser(LatLng position) async {
     final e = edition;
     if (e == null) return 'Enregistrez d’abord les informations de l’annonce.';
-    if (!e.renvoyerEnValidation) return null;
     try {
-      final a = await _repository.envoyerEnValidation(e.id);
+      final a = await _repository.finaliser(e.id,
+          latitude: position.latitude, longitude: position.longitude, envoyerEnValidation: e.renvoyerEnValidation);
       enregistree = a;
-      edition = e.copie(statut: a.statut);
+      edition = e.copie(statut: a.statut, latitude: position.latitude, longitude: position.longitude);
       return null;
     } on PublicationException catch (x) {
       return x.message;

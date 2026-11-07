@@ -1,12 +1,15 @@
-// Tests de l'écran [6.1] (+ parcours avec l'étape photos [6.2]) avec de faux repositories.
+// Tests de l'écran [6.1] et du parcours complet (photos [6.2], emplacement [6.4])
+// avec de faux repositories / services.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:poc_temps_reel/core/darimmo_theme.dart';
 import 'package:poc_temps_reel/features/publish/data/annonce_repository.dart';
 import 'package:poc_temps_reel/features/publish/models/annonce.dart';
 import 'package:poc_temps_reel/features/publish/ui/publier_annonce_page.dart';
 
 import '../photos/faux_photos_repository.dart';
+import '../position/faux_position.dart';
 
 /// Faux repository qui imite le trigger annonces_statut.
 class FauxRepository implements AnnonceRepository {
@@ -15,13 +18,16 @@ class FauxRepository implements AnnonceRepository {
   final brouillons = <NouvelleAnnonce>[];
   final modifiees = <(EditionAnnonce, NouvelleAnnonce)>[];
   final validees = <String>[];
+  final positions = <String, LatLng>{};
   final _valeurs = <String, NouvelleAnnonce>{};
+  final _statuts = <String, StatutAnnonce>{};
 
   @override
   Future<Annonce> creerBrouillon(NouvelleAnnonce a) async {
     brouillons.add(a);
     if (erreur != null) throw PublicationException(erreur!);
     _valeurs['id-test'] = a;
+    _statuts['id-test'] = StatutAnnonce.brouillon;
     return _annonce('id-test', a, StatutAnnonce.brouillon);
   }
 
@@ -31,13 +37,20 @@ class FauxRepository implements AnnonceRepository {
     if (erreur != null) throw PublicationException(erreur!);
     _valeurs[e.id] = a;
     // Comme le trigger : une annonce publiée modifiée repasse en attente ; sinon statut inchangé.
-    return _annonce(e.id, a, e.statut == StatutAnnonce.publiee ? StatutAnnonce.enAttente : e.statut);
+    final s = e.statut == StatutAnnonce.publiee ? StatutAnnonce.enAttente : e.statut;
+    _statuts[e.id] = s;
+    return _annonce(e.id, a, s);
   }
 
   @override
-  Future<Annonce> envoyerEnValidation(String id) async {
-    validees.add(id);
-    return _annonce(id, _valeurs[id]!, StatutAnnonce.enAttente);
+  Future<Annonce> finaliser(String id,
+      {required double latitude, required double longitude, required bool envoyerEnValidation}) async {
+    positions[id] = LatLng(latitude, longitude);
+    if (envoyerEnValidation) {
+      validees.add(id);
+      _statuts[id] = StatutAnnonce.enAttente;
+    }
+    return _annonce(id, _valeurs[id]!, _statuts[id]!);
   }
 
   static Annonce _annonce(String id, NouvelleAnnonce a, StatutAnnonce s) => Annonce(
@@ -66,6 +79,9 @@ Future<void> ouvrir(WidgetTester tester, AnnonceRepository repo,
       repository: repo,
       photosRepository: photos ?? FauxPhotosRepository(),
       choisirPhotos: (galerie ?? FausseGalerie()).choisir,
+      geocodage: FauxGeocodage(),
+      localisation: FausseLocalisation(),
+      afficherTuiles: false,
     ),
   ));
 }
@@ -98,7 +114,7 @@ void main() {
     expect(repo.brouillons, isEmpty);
   });
 
-  testWidgets('parcours complet : brouillon, photos, puis « en attente »', (tester) async {
+  testWidgets('parcours complet : brouillon, photos, emplacement, puis « en attente »', (tester) async {
     final repo = FauxRepository();
     final photos = FauxPhotosRepository();
     final galerie = FausseGalerie([photo('salon.jpg'), photo('cuisine.jpg')]);
@@ -117,15 +133,20 @@ void main() {
     expect(a.versLigne('u1')['statut'], 'brouillon');
 
     // Étape 2 : photos
-    expect(find.text('Étape 2 sur 2'), findsOneWidget);
+    expect(find.text('Étape 2 sur 3'), findsOneWidget);
     await tester.tap(find.text('Ajouter'));
     await tester.pumpAndSettle();
     expect(photos.envoyees, ['salon.jpg', 'cuisine.jpg']);
     expect(photos.ordres, [0, 1]);
     expect(find.text('Photos (2/10)'), findsOneWidget);
+    await continuer(tester);
 
+    // Étape 3 : emplacement, centré sur la ville saisie (Ennasr 2, Ariana)
+    expect(find.text('Étape 3 sur 3'), findsOneWidget);
+    expect(find.textContaining('Position approximative'), findsOneWidget);
     await tester.tap(find.text('Envoyer pour validation'));
     await tester.pumpAndSettle();
+    expect(repo.positions['id-test'], ennasr);
     expect(repo.validees, ['id-test']);
     expect(find.text('Annonce envoyée !'), findsOneWidget);
     expect(find.text('En attente'), findsOneWidget);
@@ -146,7 +167,7 @@ void main() {
     expect(repo.brouillons, hasLength(1));
     expect(repo.modifiees.single.$1.id, 'id-test');
     expect(repo.modifiees.single.$2.prix, 390000);
-    expect(find.text('Envoyer pour validation'), findsOneWidget);
+    expect(find.text('Étape 2 sur 3'), findsOneWidget);
   });
 
   testWidgets('terrain : le compteur de pièces disparaît', (tester) async {
@@ -163,7 +184,7 @@ void main() {
     await remplir(tester);
     await continuer(tester);
 
-    expect(find.text('Étape 2 sur 2'), findsNothing);
+    expect(find.text('Étape 2 sur 3'), findsNothing);
     expect(find.textContaining('Publication refusée'), findsOneWidget);
   });
 
@@ -198,7 +219,12 @@ void main() {
                   repository: repo,
                   photosRepository: FauxPhotosRepository(),
                   choisirPhotos: FausseGalerie().choisir,
-                  edition: EditionAnnonce(id: 'id-villa', statut: statut, valeurs: villa),
+                  geocodage: FauxGeocodage(),
+                  localisation: FausseLocalisation(),
+                  afficherTuiles: false,
+                  edition: EditionAnnonce(
+                      id: 'id-villa', statut: statut, valeurs: villa,
+                      latitude: lac2.latitude, longitude: lac2.longitude),
                 ),
               )));
             },
@@ -231,8 +257,11 @@ void main() {
       expect(valeurs.prix, 420000);
       expect(valeurs.description, 'Avec piscine');
 
+      await continuer(tester); // photos -> emplacement
+      expect(find.text('Lat. 36,8421 · Long. 10,2752'), findsOneWidget, reason: 'position existante reprise');
       await tester.tap(find.text('Terminer'));
       await tester.pumpAndSettle();
+      expect(repo.positions['id-villa'], lac2);
       expect(repo.validees, isEmpty, reason: 'le trigger l’a déjà remise en attente');
       expect(retour?.statut, StatutAnnonce.enAttente);
       expect(find.text('Annonce envoyée !'), findsNothing);
@@ -243,7 +272,8 @@ void main() {
       final repo = FauxRepository();
       Annonce? retour;
       await ouvrirEdition(tester, repo, StatutAnnonce.rejetee, (a) => retour = a);
-      await continuer(tester);
+      await continuer(tester); // formulaire -> photos
+      await continuer(tester); // photos -> emplacement
       await tester.tap(find.text('Renvoyer pour validation'));
       await tester.pumpAndSettle();
       expect(repo.validees, ['id-villa']);

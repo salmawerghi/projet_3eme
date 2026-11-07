@@ -18,17 +18,17 @@ import '../data/photos_repository.dart';
 import '../models/photo_annonce.dart';
 import '../photos_view_model.dart';
 
-/// Ferme l'écran avec `true` quand l'utilisateur a validé (bouton principal),
-/// ou `null` s'il revient au formulaire.
+/// Ferme l'écran avec `true` quand le parcours est terminé (voir [onSuivant]),
+/// ou `null` si l'utilisateur revient au formulaire.
 class PhotosAnnoncePage extends StatelessWidget {
   const PhotosAnnoncePage({
     super.key,
     required this.repository,
     required this.idAnnonce,
-    required this.libelleBouton,
-    required this.onValider,
+    required this.onSuivant,
     this.choisir = choisirDansLaGalerie,
-    this.iconeBouton = Icons.send_rounded,
+    this.libelleBouton = 'Continuer',
+    this.iconeBouton = Icons.arrow_forward_rounded,
   });
 
   final PhotosRepository repository;
@@ -37,24 +37,25 @@ class PhotosAnnoncePage extends StatelessWidget {
   final String libelleBouton;
   final IconData iconeBouton;
 
-  /// Action du bouton principal (ex : envoyer en validation). Renvoie null si
-  /// tout va bien, sinon le message d'erreur à afficher.
-  final Future<String?> Function() onValider;
+  /// Bouton principal, appelé une fois toutes les photos envoyées (ex : ouvre
+  /// l'étape « Emplacement »). true = parcours terminé, l'écran se ferme ;
+  /// false = on reste sur les photos (l'utilisateur est revenu en arrière).
+  final Future<bool> Function(BuildContext context) onSuivant;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => PhotosViewModel(repository, idAnnonce, choisir)..charger(),
-      child: _Contenu(libelleBouton: libelleBouton, iconeBouton: iconeBouton, onValider: onValider),
+      child: _Contenu(libelleBouton: libelleBouton, iconeBouton: iconeBouton, onSuivant: onSuivant),
     );
   }
 }
 
 class _Contenu extends StatefulWidget {
-  const _Contenu({required this.libelleBouton, required this.iconeBouton, required this.onValider});
+  const _Contenu({required this.libelleBouton, required this.iconeBouton, required this.onSuivant});
   final String libelleBouton;
   final IconData iconeBouton;
-  final Future<String?> Function() onValider;
+  final Future<bool> Function(BuildContext context) onSuivant;
 
   @override
   State<_Contenu> createState() => _ContenuState();
@@ -62,24 +63,18 @@ class _Contenu extends StatefulWidget {
 
 class _ContenuState extends State<_Contenu> {
   bool _validation = false;
-  String? _erreurValidation;
 
   Future<void> _valider() async {
     final vm = context.read<PhotosViewModel>();
-    setState(() {
-      _validation = true;
-      _erreurValidation = null;
-    });
+    setState(() => _validation = true);
     await vm.termine; // dernières suppressions / renumérotations
-    final erreur = await widget.onValider();
     if (!mounted) return;
-    if (erreur == null) {
+    final fini = await widget.onSuivant(context);
+    if (!mounted) return;
+    if (fini) {
       Navigator.of(context).pop(true);
     } else {
-      setState(() {
-        _validation = false;
-        _erreurValidation = erreur;
-      });
+      setState(() => _validation = false);
     }
   }
 
@@ -92,7 +87,7 @@ class _ContenuState extends State<_Contenu> {
       appBar: AppBar(
         title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Photos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          Text('Étape 2 sur 2',
+          Text('Étape 2 sur 3',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DarColors.muted)),
         ]),
       ),
@@ -132,10 +127,6 @@ class _ContenuState extends State<_Contenu> {
                 if (vm.erreur != null) ...[
                   const SizedBox(height: 16),
                   _Bandeau(icone: Icons.error_outline, danger: true, texte: vm.erreur!),
-                ],
-                if (_erreurValidation != null) ...[
-                  const SizedBox(height: 16),
-                  _Bandeau(icone: Icons.error_outline, danger: true, texte: _erreurValidation!),
                 ],
                 if (vm.nombre > 1) ...[
                   const SizedBox(height: 16),

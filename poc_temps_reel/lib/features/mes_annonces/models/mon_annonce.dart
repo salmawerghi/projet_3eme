@@ -39,7 +39,13 @@ class MonAnnonce {
     this.motif,
     this.photoUrl,
     this.cheminsPhotos = const [],
+    this.latitude,
+    this.longitude,
   });
+
+  /// [6.4] Position du bien (null si pas encore placé sur la carte).
+  final double? latitude;
+  final double? longitude;
 
   final String id;
   final String titre;
@@ -100,12 +106,14 @@ class MonAnnonce {
         adresse: adresse,
         description: description,
       ),
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 
   /// Colonnes lues dans Supabase (+ photos liées, triées par ordre).
   static const colonnes = 'id, titre, type_bien, type_offre, prix, surface, nb_pieces, '
-      'adresse, ville, description, statut, motif_rejet, date_creation, date_maj, '
+      'adresse, ville, description, latitude, longitude, statut, motif_rejet, date_creation, date_maj, '
       'photos(url, ordre, chemin_storage)';
 
   factory MonAnnonce.depuisLigne(Map<String, dynamic> l) {
@@ -128,6 +136,8 @@ class MonAnnonce {
       motif: l['motif_rejet'] as String?,
       photoUrl: photos.isEmpty ? null : photos.first['url'] as String,
       cheminsPhotos: [for (final p in photos) if (p['chemin_storage'] != null) p['chemin_storage'] as String],
+      latitude: (l['latitude'] as num?)?.toDouble(),
+      longitude: (l['longitude'] as num?)?.toDouble(),
     );
   }
 }
