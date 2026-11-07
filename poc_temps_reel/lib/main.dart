@@ -29,6 +29,9 @@ import 'features/publish/ui/publier_annonce_page.dart';
 import 'features/photos/data/photos_repository.dart';
 import 'features/mes_annonces/data/mes_annonces_repository.dart';
 import 'features/mes_annonces/ui/mes_annonces_page.dart';
+import 'features/conversations/data/conversations_repository.dart';
+import 'features/conversations/models/resume_conversation.dart' show formaterJourDiscussion;
+import 'features/conversations/ui/conversations_page.dart';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
@@ -74,7 +77,7 @@ class PocApp extends StatelessWidget {
         stream: supabase.auth.onAuthStateChange,
         builder: (context, _) => supabase.auth.currentSession == null
             ? const LoginPage()
-            : const ConversationsPage(),
+            : const AccueilPage(),
       ),
     );
   }
@@ -233,42 +236,19 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // =====================================================================
-// Liste des conversations (fonction SQL mes_conversations)
+// Accueil : « Messages » = mes conversations ([7.3], lib/features/conversations/)
 // =====================================================================
-class ConversationsPage extends StatefulWidget {
-  const ConversationsPage({super.key});
+class AccueilPage extends StatefulWidget {
+  const AccueilPage({super.key});
   @override
-  State<ConversationsPage> createState() => _ConversationsPageState();
+  State<AccueilPage> createState() => _AccueilPageState();
 }
 
-class _ConversationsPageState extends State<ConversationsPage> {
-  late Future<List<Map<String, dynamic>>> _future = _load();
-  RealtimeChannel? _channel;
-
-  Future<List<Map<String, dynamic>>> _load() async {
-    final rows = await supabase.rpc('mes_conversations');
-    return List<Map<String, dynamic>>.from(rows as List);
-  }
-
+class _AccueilPageState extends State<AccueilPage> {
   @override
   void initState() {
     super.initState();
     PushService.register(); // aussi au redémarrage avec une session existante
-    // Toute nouvelle activité dans mes conversations rafraîchit la liste.
-    _channel = supabase.channel('mes-conversations')
-      ..onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'conversations',
-        callback: (_) => setState(() => _future = _load()),
-      )
-      ..subscribe();
-  }
-
-  @override
-  void dispose() {
-    if (_channel != null) supabase.removeChannel(_channel!);
-    super.dispose();
   }
 
   Future<void> _logout() async {
@@ -278,59 +258,26 @@ class _ConversationsPageState extends State<ConversationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(supabase.auth.currentUser?.email ?? ''),
-        actions: [
-          // [6.3] Mes annonces
-          IconButton(
-            onPressed: () => Navigator.push(context, mesAnnoncesRoute()),
-            icon: const Icon(Icons.home_work_outlined),
-            tooltip: 'Mes annonces',
-          ),
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Déconnexion'),
-        ],
-      ),
+    return ConversationsPage(
+      repository: SupabaseConversationsRepository(supabase),
+      onOuvrir: (context, c) => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ChatPage(conversationId: c.id, title: c.nomAffiche),
+      )),
+      actions: [
+        // [6.3] Mes annonces
+        IconButton(
+          onPressed: () => Navigator.push(context, mesAnnoncesRoute()),
+          icon: const Icon(Icons.home_work_outlined),
+          tooltip: 'Mes annonces',
+        ),
+        IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Déconnexion'),
+        const SizedBox(width: 8),
+      ],
       // [6.1] Publier une annonce
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(context, publierAnnonceRoute()),
         icon: const Icon(Icons.add),
         label: const Text('Publier une annonce'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => setState(() => _future = _load()),
-        child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.hasError) return ListView(children: [ListTile(title: Text('Erreur : ${snap.error}'))]);
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-            final convs = snap.data!;
-            return ListView(children: [
-              ListTile(
-                dense: true,
-                title: const Text('Jeton FCM de cet appareil'),
-                subtitle: SelectableText(PushService.token ?? 'pas encore reçu'),
-              ),
-              const Divider(),
-              if (convs.isEmpty) const ListTile(title: Text('Aucune conversation')),
-              for (final c in convs)
-                ListTile(
-                  leading: CircleAvatar(child: Text((c['nom_interlocuteur'] as String? ?? '?').characters.first)),
-                  title: Text('${c['nom_interlocuteur']} · ${c['titre_annonce'] ?? 'annonce supprimée'}'),
-                  subtitle: Text(c['dernier_message'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: (c['non_lus'] as int) > 0
-                      ? Badge(label: Text('${c['non_lus']}'))
-                      : null,
-                  onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => ChatPage(conversationId: c['id'], title: c['nom_interlocuteur']),
-                    ));
-                    setState(() => _future = _load());
-                  },
-                ),
-            ]);
-          },
-        ),
       ),
     );
   }
@@ -371,13 +318,25 @@ class _ChatPageState extends State<ChatPage> {
         ),
         callback: (payload) {
           final m = payload.newRecord;
-          if (_messages.any((x) => x['id'] == m['id'])) return; // déjà affiché
-          setState(() => _messages.add(m));
+          if (!mounted || _messages.any((x) => x['id'] == m['id'])) return; // déjà affiché
+          setState(() => _ajouter([m]));
           _scrollDown();
           if (m['id_expediteur'] != _me) _markRead();
         },
       )
       ..subscribe();
+  }
+
+  /// Ajoute puis trie par date d'envoi (puis id) : un message reçu par Realtime
+  /// et la réponse de l'INSERT peuvent arriver dans n'importe quel ordre.
+  void _ajouter(Iterable<Map<String, dynamic>> nouveaux) {
+    for (final m in nouveaux) {
+      if (!_messages.any((x) => x['id'] == m['id'])) _messages.add(m);
+    }
+    _messages.sort((a, b) {
+      final d = DateTime.parse(a['date_envoi']).compareTo(DateTime.parse(b['date_envoi']));
+      return d != 0 ? d : (a['id'] as num).compareTo(b['id'] as num);
+    });
   }
 
   // 2. Historique.
@@ -386,16 +345,24 @@ class _ChatPageState extends State<ChatPage> {
         .from('messages')
         .select()
         .eq('id_conversation', widget.conversationId)
-        .order('date_envoi');
-    setState(() => _messages
-      ..clear()
-      ..addAll(List<Map<String, dynamic>>.from(rows)));
+        .order('date_envoi')
+        .order('id');
+    if (!mounted) return;
+    setState(() => _ajouter(List<Map<String, dynamic>>.from(rows)));
     _scrollDown();
     _markRead();
   }
 
-  Future<void> _markRead() =>
-      supabase.rpc('marquer_conversation_lue', params: {'p_conversation': widget.conversationId});
+  /// [7.3] Remet à zéro les « non lus ». ATTENTION : avec supabase_flutter, une
+  /// requête n'est envoyée que si on l'attend (await) ; l'ancien code renvoyait
+  /// la requête sans l'attendre, elle ne partait donc jamais.
+  Future<void> _markRead() async {
+    try {
+      await supabase.rpc('marquer_conversation_lue', params: {'p_conversation': widget.conversationId});
+    } catch (e) {
+      debugPrint('[7.3] marquer_conversation_lue : $e');
+    }
+  }
 
   // 3. Envoi : un simple INSERT. Le destinataire le reçoit par Realtime,
   //    et le webhook déclenche la notification push.
@@ -409,16 +376,36 @@ class _ChatPageState extends State<ChatPage> {
           .insert({'id_conversation': widget.conversationId, 'id_expediteur': _me, 'contenu': text})
           .select()
           .single();
-      if (!_messages.any((x) => x['id'] == row['id'])) setState(() => _messages.add(row));
+      if (mounted) setState(() => _ajouter([row]));
       _scrollDown();
     } catch (e) {
       messengerKey.currentState?.showSnackBar(SnackBar(content: Text('Envoi impossible : $e')));
     }
   }
 
+  /// La liste est inversée (reverse) : la position 0 est le bas, le dernier message.
   void _scrollDown() => WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+        if (_scroll.hasClients) {
+          _scroll.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+        }
       });
+
+  /// Messages et séparateurs de jour, du plus RÉCENT au plus ancien (liste inversée).
+  List<Widget> _elements() {
+    final maintenant = DateTime.now();
+    final elements = <Widget>[];
+    DateTime? jourPrecedent;
+    for (final m in _messages) {
+      final date = DateTime.parse(m['date_envoi']).toLocal();
+      final jour = DateTime(date.year, date.month, date.day);
+      if (jour != jourPrecedent) {
+        elements.add(_SeparateurJour(formaterJourDiscussion(date, maintenant)));
+        jourPrecedent = jour;
+      }
+      elements.add(_Bulle(message: m, date: date, mine: m['id_expediteur'] == _me));
+    }
+    return elements.reversed.toList();
+  }
 
   @override
   void dispose() {
@@ -434,33 +421,17 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(title: Text(widget.title)),
       body: Column(children: [
         Expanded(
-          child: ListView.builder(
-            controller: _scroll,
-            padding: const EdgeInsets.all(12),
-            itemCount: _messages.length,
-            itemBuilder: (_, i) {
-              final m = _messages[i];
-              final mine = m['id_expediteur'] == _me;
-              final date = DateTime.parse(m['date_envoi']).toLocal();
-              return Align(
-                alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  constraints: const BoxConstraints(maxWidth: 280),
-                  decoration: BoxDecoration(
-                    color: mine ? const Color(0xFF1F3A5F) : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(m['contenu'], style: TextStyle(color: mine ? Colors.white : Colors.black87)),
-                    Text('${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(fontSize: 11, color: mine ? Colors.white70 : Colors.black45)),
-                  ]),
-                ),
-              );
-            },
-          ),
+          // reverse : la discussion s'ouvre toujours sur le dernier message.
+          child: Builder(builder: (context) {
+            final elements = _elements();
+            return ListView.builder(
+              controller: _scroll,
+              reverse: true,
+              padding: const EdgeInsets.all(12),
+              itemCount: elements.length,
+              itemBuilder: (_, i) => elements[i],
+            );
+          }),
         ),
         SafeArea(
           child: Padding(
@@ -479,6 +450,50 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// « AUJOURD’HUI », « HIER », « MARDI 4 NOVEMBRE » (maquette C8).
+class _SeparateurJour extends StatelessWidget {
+  const _SeparateurJour(this.texte);
+  final String texte;
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: DarColors.surface2, borderRadius: BorderRadius.circular(8)),
+          child: Text(texte.toUpperCase(),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: DarColors.muted)),
+        ),
+      );
+}
+
+class _Bulle extends StatelessWidget {
+  const _Bulle({required this.message, required this.date, required this.mine});
+  final Map<String, dynamic> message;
+  final DateTime date;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          color: mine ? DarColors.primary : DarColors.surface2,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(message['contenu'] as String, style: TextStyle(color: mine ? Colors.white : DarColors.text)),
+          Text('${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 11, color: mine ? Colors.white70 : DarColors.muted)),
+        ]),
+      ),
     );
   }
 }
