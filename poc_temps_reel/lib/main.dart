@@ -7,6 +7,10 @@
 //   2. une notification FCM envoyée par l'Edge Function send-push est reçue,
 //      et que la toucher ouvre la bonne conversation.
 //
+// Sert aussi de banc d'essai pour les stories de C en attendant le squelette
+// officiel (tâche 1.6) : le module lib/features/publish/ ([6.1]) est
+// indépendant de ce fichier et pourra être copié tel quel dans le squelette.
+//
 // Lancement :
 //   flutter run --dart-define-from-file=env.json
 // =====================================================================
@@ -17,6 +21,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'core/darimmo_theme.dart';
+import 'features/publish/data/annonce_repository.dart';
+import 'features/publish/ui/publier_annonce_page.dart';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
@@ -57,7 +65,7 @@ class PocApp extends StatelessWidget {
       title: 'DarImmo PoC',
       navigatorKey: navigatorKey,
       scaffoldMessengerKey: messengerKey,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF1F3A5F), useMaterial3: true),
+      theme: darimmoTheme(),
       home: StreamBuilder<AuthState>(
         stream: supabase.auth.onAuthStateChange,
         builder: (context, _) => supabase.auth.currentSession == null
@@ -239,6 +247,14 @@ class _ConversationsPageState extends State<ConversationsPage> {
       appBar: AppBar(
         title: Text(supabase.auth.currentUser?.email ?? ''),
         actions: [IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Déconnexion')],
+      ),
+      // [6.1] Publier une annonce
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase)),
+        )),
+        icon: const Icon(Icons.add),
+        label: const Text('Publier une annonce'),
       ),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = _load()),
