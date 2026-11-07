@@ -21,6 +21,11 @@ class PublicationException implements Exception {
 abstract class AnnonceRepository {
   /// Enregistre l'annonce au statut « en attente » pour l'utilisateur connecté.
   Future<Annonce> publier(NouvelleAnnonce annonce);
+
+  /// [6.3] Enregistre les nouvelles valeurs d'une annonce existante.
+  /// Renvoie l'annonce avec son statut après modification (une annonce
+  /// publiée modifiée revient « en attente »).
+  Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs);
 }
 
 class SupabaseAnnonceRepository implements AnnonceRepository {
@@ -53,9 +58,43 @@ class SupabaseAnnonceRepository implements AnnonceRepository {
     }
   }
 
-  /// Codes PostgreSQL : 42501 = refusé par RLS, 23514 = contrainte CHECK.
+  @override
+  Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs) async {
+    if (_client.auth.currentUser == null) {
+      throw const PublicationException('Connectez-vous pour modifier une annonce.');
+    }
+    try {
+      final ligne = await _client
+          .from('annonces')
+          .update({
+            ...valeurs.versContenu(),
+            if (edition.renvoyerEnValidation) 'statut': 'en_attente',
+          })
+          .eq('id', edition.id)
+          .select('id, titre, type_bien, type_offre, prix, ville, statut, date_creation')
+          .maybeSingle();
+      // Aucune ligne : annonce supprimée entre-temps, ou refusée par RLS (compte bloqué).
+      if (ligne == null) {
+        throw const PublicationException('Annonce introuvable ou modification refusée.');
+      }
+      return Annonce.depuisLigne(ligne);
+    } on PostgrestException catch (e) {
+      throw PublicationException(_message(e));
+    } on AuthException catch (_) {
+      throw const PublicationException('Session expirée : reconnectez-vous.');
+    } on PublicationException {
+      rethrow;
+    } catch (_) {
+      throw const PublicationException('Connexion impossible. Vérifiez Internet et réessayez.');
+    }
+  }
+
+  /// Codes PostgreSQL : 42501 = refusé par RLS, 23514 = contrainte CHECK,
+  /// P0001 = exception levée par le trigger annonces_statut.
   static String _message(PostgrestException e) {
     switch (e.code) {
+      case 'P0001':
+        return e.message;
       case '42501':
         return 'Publication refusée : votre compte est peut-être bloqué.';
       case '23514':

@@ -10,17 +10,33 @@ class FauxRepository implements AnnonceRepository {
   FauxRepository({this.erreur});
   final String? erreur;
   final recues = <NouvelleAnnonce>[];
+  final modifiees = <(EditionAnnonce, NouvelleAnnonce)>[];
 
   @override
   Future<Annonce> publier(NouvelleAnnonce a) async {
     recues.add(a);
     if (erreur != null) throw PublicationException(erreur!);
-    return Annonce(
-      id: 'id-test', titre: a.titre.trim(), typeBien: a.typeBien, typeOffre: a.typeOffre,
-      prix: a.prix, ville: a.ville.trim(), statut: StatutAnnonce.enAttente, dateCreation: DateTime(2026, 11, 6, 10, 42),
-    );
+    return _annonce('id-test', a, StatutAnnonce.enAttente);
   }
+
+  @override
+  Future<Annonce> modifier(EditionAnnonce e, NouvelleAnnonce a) async {
+    modifiees.add((e, a));
+    if (erreur != null) throw PublicationException(erreur!);
+    // Comme le trigger : publiée ou rejetée modifiée -> en attente
+    return _annonce(e.id, a, StatutAnnonce.enAttente);
+  }
+
+  static Annonce _annonce(String id, NouvelleAnnonce a, StatutAnnonce s) => Annonce(
+        id: id, titre: a.titre.trim(), typeBien: a.typeBien, typeOffre: a.typeOffre,
+        prix: a.prix, ville: a.ville.trim(), statut: s, dateCreation: DateTime(2026, 11, 6, 10, 42),
+      );
 }
+
+const villa = NouvelleAnnonce(
+  titre: 'Villa s+4', typeBien: TypeBien.villa, typeOffre: TypeOffre.vente,
+  prix: 450000, surface: 220, nbPieces: 5, ville: 'Hammamet', description: 'Avec piscine',
+);
 
 Future<void> ouvrir(WidgetTester tester, AnnonceRepository repo) async {
   tester.view.physicalSize = const Size(1170, 2532);
@@ -93,5 +109,77 @@ void main() {
 
     expect(find.text('Annonce envoyée !'), findsNothing);
     expect(find.textContaining('Publication refusée'), findsOneWidget);
+  });
+
+  group('[6.3] Modifier une annonce', () {
+    test('versContenu n’envoie ni statut ni annonceur', () {
+      final c = villa.versContenu();
+      expect(c.containsKey('statut'), isFalse);
+      expect(c.containsKey('id_annonceur'), isFalse);
+      expect(c['titre'], 'Villa s+4');
+    });
+
+    test('seules une annonce rejetée ou un brouillon sont renvoyés explicitement', () {
+      EditionAnnonce e(StatutAnnonce s) => EditionAnnonce(id: 'x', statut: s, valeurs: villa);
+      expect(e(StatutAnnonce.rejetee).renvoyerEnValidation, isTrue);
+      expect(e(StatutAnnonce.brouillon).renvoyerEnValidation, isTrue);
+      // publiée : le trigger s'en charge ; envoyer le statut serait refusé
+      expect(e(StatutAnnonce.publiee).renvoyerEnValidation, isFalse);
+      expect(e(StatutAnnonce.enAttente).renvoyerEnValidation, isFalse);
+    });
+
+    Future<Annonce?> ouvrirEdition(WidgetTester tester, FauxRepository repo, StatutAnnonce statut) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      Annonce? retour;
+      await tester.pumpWidget(MaterialApp(
+        theme: darimmoTheme(),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              retour = await Navigator.push<Annonce>(context, MaterialPageRoute(
+                builder: (_) => PublierAnnoncePage(
+                    repository: repo, edition: EditionAnnonce(id: 'id-villa', statut: statut, valeurs: villa)),
+              ));
+            },
+            child: const Text('ouvrir'),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('ouvrir'));
+      await tester.pumpAndSettle();
+      return retour;
+    }
+
+    testWidgets('formulaire pré-rempli, enregistrement puis retour à la liste', (tester) async {
+      final repo = FauxRepository();
+      await ouvrirEdition(tester, repo, StatutAnnonce.publiee);
+
+      expect(find.text('Modifier l’annonce'), findsOneWidget);
+      expect(find.textContaining('elle sera retirée'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Villa s+4'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '450 000'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Hammamet'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget); // compteur de pièces
+
+      await tester.enterText(find.widgetWithText(TextFormField, '450 000'), '420 000');
+      await tester.tap(find.text('Enregistrer'));
+      await tester.pumpAndSettle();
+
+      expect(repo.recues, isEmpty, reason: 'pas de nouvelle annonce');
+      final (edition, valeurs) = repo.modifiees.single;
+      expect(edition.id, 'id-villa');
+      expect(valeurs.prix, 420000);
+      expect(valeurs.typeBien, TypeBien.villa);
+      expect(valeurs.description, 'Avec piscine');
+      expect(find.text('Modifier l’annonce'), findsNothing, reason: 'écran fermé');
+      expect(find.text('Annonce envoyée !'), findsNothing);
+    });
+
+    testWidgets('annonce rejetée : bouton « Renvoyer pour validation »', (tester) async {
+      await ouvrirEdition(tester, FauxRepository(), StatutAnnonce.rejetee);
+      expect(find.text('Renvoyer pour validation'), findsOneWidget);
+    });
   });
 }

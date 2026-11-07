@@ -12,8 +12,20 @@ import 'data/annonce_repository.dart';
 import 'models/annonce.dart';
 
 class PublierAnnonceViewModel extends ChangeNotifier {
-  PublierAnnonceViewModel(this._repository);
+  /// [edition] non nul = modification d'une annonce existante (6.3) :
+  /// les choix sont pré-remplis avec ses valeurs.
+  PublierAnnonceViewModel(this._repository, {this.edition}) {
+    final v = edition?.valeurs;
+    if (v != null) {
+      typeOffre = v.typeOffre;
+      typeBien = v.typeBien;
+      if (v.nbPieces >= 1) nbPieces = v.nbPieces; // un terrain a 0 pièce : on garde 3 par défaut
+    }
+  }
   final AnnonceRepository _repository;
+  final EditionAnnonce? edition;
+
+  bool get modification => edition != null;
 
   TypeOffre typeOffre = TypeOffre.vente;
   TypeBien? typeBien; // null tant que l'utilisateur n'a pas choisi
@@ -55,7 +67,8 @@ class PublierAnnonceViewModel extends ChangeNotifier {
     erreur = null;
     notifyListeners();
     try {
-      return await _repository.publier(annonce);
+      final e = edition;
+      return e == null ? await _repository.publier(annonce) : await _repository.modifier(e, annonce);
     } on PublicationException catch (e) {
       erreur = e.message;
       return null;

@@ -24,7 +24,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/darimmo_theme.dart';
 import 'features/publish/data/annonce_repository.dart';
+import 'features/publish/models/annonce.dart';
 import 'features/publish/ui/publier_annonce_page.dart';
+import 'features/mes_annonces/data/mes_annonces_repository.dart';
+import 'features/mes_annonces/ui/mes_annonces_page.dart';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
@@ -140,9 +143,32 @@ class PushService {
       navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (_) => ChatPage(conversationId: data['id_conversation'] as String, title: 'Conversation'),
       ));
+    } else if (data['type'] == 'statut') {
+      // [8.2] « Annonce publiée / rejetée / masquée » -> Mes annonces (6.3 / 6.5)
+      navigatorKey.currentState?.push(mesAnnoncesRoute());
     }
   }
 }
+
+// =====================================================================
+// Routes des modules de C (6.1 Publier, 6.3 Mes annonces)
+// =====================================================================
+Route<void> publierAnnonceRoute() => MaterialPageRoute(
+      builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase)),
+    );
+
+/// [6.3] Même formulaire que la 6.1, pré-rempli ; renvoie l'annonce enregistrée.
+Route<Annonce> modifierAnnonceRoute(EditionAnnonce edition) => MaterialPageRoute(
+      builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase), edition: edition),
+    );
+
+Route<void> mesAnnoncesRoute() => MaterialPageRoute(
+      builder: (_) => MesAnnoncesPage(
+        repository: SupabaseMesAnnoncesRepository(supabase),
+        onPublier: (context) => Navigator.push(context, publierAnnonceRoute()),
+        onModifier: (context, edition) => Navigator.push(context, modifierAnnonceRoute(edition)),
+      ),
+    );
 
 // =====================================================================
 // Connexion (comptes de test créés pour le seed)
@@ -246,13 +272,19 @@ class _ConversationsPageState extends State<ConversationsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(supabase.auth.currentUser?.email ?? ''),
-        actions: [IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Déconnexion')],
+        actions: [
+          // [6.3] Mes annonces
+          IconButton(
+            onPressed: () => Navigator.push(context, mesAnnoncesRoute()),
+            icon: const Icon(Icons.home_work_outlined),
+            tooltip: 'Mes annonces',
+          ),
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: 'Déconnexion'),
+        ],
       ),
       // [6.1] Publier une annonce
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase)),
-        )),
+        onPressed: () => Navigator.push(context, publierAnnonceRoute()),
         icon: const Icon(Icons.add),
         label: const Text('Publier une annonce'),
       ),

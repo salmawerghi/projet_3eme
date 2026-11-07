@@ -19,14 +19,18 @@ import '../publier_annonce_view_model.dart';
 import '../validators.dart';
 import 'annonce_envoyee_page.dart';
 
+/// Sert aussi à MODIFIER une annonce (6.3) quand [edition] est fourni :
+/// le formulaire est pré-rempli, et l'écran se ferme en renvoyant l'[Annonce]
+/// enregistrée (Navigator.pop) au lieu d'ouvrir l'écran de confirmation.
 class PublierAnnoncePage extends StatelessWidget {
-  const PublierAnnoncePage({super.key, required this.repository});
+  const PublierAnnoncePage({super.key, required this.repository, this.edition});
   final AnnonceRepository repository;
+  final EditionAnnonce? edition;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => PublierAnnonceViewModel(repository),
+      create: (_) => PublierAnnonceViewModel(repository, edition: edition),
       child: const _Formulaire(),
     );
   }
@@ -46,6 +50,20 @@ class _FormulaireState extends State<_Formulaire> {
   final _adresse = TextEditingController();
   final _ville = TextEditingController();
   final _description = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final v = context.read<PublierAnnonceViewModel>().edition?.valeurs;
+    if (v != null) {
+      _titre.text = v.titre;
+      _prix.text = formaterPrix(v.prix); // « 385 000 » : relu par lireNombre
+      _surface.text = formaterPrix(v.surface);
+      _adresse.text = v.adresse ?? '';
+      _ville.text = v.ville;
+      _description.text = v.description ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -73,7 +91,10 @@ class _FormulaireState extends State<_Formulaire> {
       adresse: _adresse.text,
       description: _description.text,
     ));
-    if (annonce != null && mounted) {
+    if (annonce == null || !mounted) return;
+    if (vm.modification) {
+      Navigator.of(context).pop(annonce); // retour à « Mes annonces »
+    } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => AnnonceEnvoyeePage(annonce: annonce)),
       );
@@ -84,6 +105,33 @@ class _FormulaireState extends State<_Formulaire> {
   Widget build(BuildContext context) {
     final vm = context.watch<PublierAnnonceViewModel>();
     final nombres = [FilteringTextInputFormatter.allow(RegExp(r'[0-9 ,.]'))];
+    final statut = vm.edition?.statut;
+    final (titreEcran, bouton, iconeBouton, bandeau) = switch (statut) {
+      null => (
+          'Publier une annonce',
+          'Envoyer pour validation',
+          Icons.send_rounded,
+          'Votre annonce sera vérifiée par un administrateur avant d’être visible par tous.',
+        ),
+      StatutAnnonce.rejetee || StatutAnnonce.brouillon => (
+          'Modifier l’annonce',
+          'Renvoyer pour validation',
+          Icons.send_rounded,
+          'Corrigez votre annonce : elle sera de nouveau vérifiée par un administrateur.',
+        ),
+      StatutAnnonce.publiee => (
+          'Modifier l’annonce',
+          'Enregistrer',
+          Icons.check_rounded,
+          'Votre annonce est en ligne. Si vous la modifiez, elle sera retirée le temps qu’un administrateur valide les changements.',
+        ),
+      _ => (
+          'Modifier l’annonce',
+          'Enregistrer',
+          Icons.check_rounded,
+          'Votre annonce est en cours de vérification par un administrateur.',
+        ),
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -92,9 +140,9 @@ class _FormulaireState extends State<_Formulaire> {
           tooltip: 'Fermer',
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Publier une annonce', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          Text('Informations du bien',
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(titreEcran, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const Text('Informations du bien',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DarColors.muted)),
         ]),
       ),
@@ -105,10 +153,7 @@ class _FormulaireState extends State<_Formulaire> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const _Bandeau(
-              icone: Icons.verified_user_outlined,
-              texte: 'Votre annonce sera vérifiée par un administrateur avant d’être visible par tous.',
-            ),
+            _Bandeau(icone: Icons.verified_user_outlined, texte: bandeau),
             const _Titre('Je souhaite'),
             _Selecteur(
               options: TypeOffre.values,
@@ -229,8 +274,8 @@ class _FormulaireState extends State<_Formulaire> {
             icon: vm.envoiEnCours
                 ? const SizedBox(
                     width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                : const Icon(Icons.send_rounded),
-            label: Text(vm.envoiEnCours ? 'Envoi…' : 'Envoyer pour validation'),
+                : Icon(iconeBouton),
+            label: Text(vm.envoiEnCours ? 'Envoi…' : bouton),
           ),
         ),
       ),

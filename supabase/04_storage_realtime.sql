@@ -42,6 +42,19 @@ create policy "photos annonce : suppression par l'annonceur ou l'admin"
                   and a.id_annonceur = auth.uid()))
   );
 
+-- [6.3] Lecture des fichiers par l'annonceur (ou l'admin).
+-- Nécessaire à l'API Storage pour supprimer (remove = SELECT + DELETE) et
+-- pour remplacer un fichier (upsert). L'affichage public des photos passe par
+-- l'URL publique du bucket, qui n'utilise pas cette règle.
+create policy "photos annonce : lecture par l'annonceur ou l'admin"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'annonces-photos'
+    and (public.is_admin() or exists (select 1 from public.annonces a
+                where a.id::text = (storage.foldername(name))[1]
+                  and a.id_annonceur = auth.uid()))
+  );
+
 -- ----- avatars : chacun écrit dans son propre dossier
 create policy "avatars : envoi dans son dossier"
   on storage.objects for insert to authenticated

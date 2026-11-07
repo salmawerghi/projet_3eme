@@ -76,6 +76,14 @@ class NouvelleAnnonce {
   /// statut = en_attente : l'annonce attend la validation d'un administrateur
   /// (le trigger annonces_statut l'impose de toute façon).
   Map<String, dynamic> versLigne(String idAnnonceur) => {
+        ...versContenu(),
+        'statut': 'en_attente',
+        'id_annonceur': idAnnonceur,
+      };
+
+  /// Colonnes de contenu seules (sans statut ni annonceur) : utilisé pour
+  /// la modification d'une annonce existante (6.3).
+  Map<String, dynamic> versContenu() => {
         'titre': titre.trim(),
         'type_bien': typeBien.name,
         'type_offre': typeOffre.name,
@@ -85,11 +93,27 @@ class NouvelleAnnonce {
         'ville': ville.trim(),
         'adresse': _vide(adresse),
         'description': _vide(description),
-        'statut': 'en_attente',
-        'id_annonceur': idAnnonceur,
       };
 
   static String? _vide(String? s) => (s == null || s.trim().isEmpty) ? null : s.trim();
+}
+
+/// [6.3] Annonce déjà enregistrée, ouverte dans le formulaire de la 6.1
+/// pour être modifiée.
+class EditionAnnonce {
+  const EditionAnnonce({required this.id, required this.statut, required this.valeurs});
+  final String id;
+  final StatutAnnonce statut;
+
+  /// Valeurs actuelles, qui pré-remplissent le formulaire.
+  final NouvelleAnnonce valeurs;
+
+  /// Une annonce rejetée (ou un brouillon) doit être renvoyée explicitement
+  /// en validation (rejetee -> en_attente, autorisé par le trigger).
+  /// Une annonce publiée y repasse toute seule si son contenu change
+  /// (trigger annonces_statut) : il ne faut PAS envoyer le statut dans ce cas,
+  /// sinon le trigger refuse la transition publiee -> en_attente.
+  bool get renvoyerEnValidation => statut == StatutAnnonce.rejetee || statut == StatutAnnonce.brouillon;
 }
 
 /// Annonce telle que renvoyée par la base après l'insertion.
