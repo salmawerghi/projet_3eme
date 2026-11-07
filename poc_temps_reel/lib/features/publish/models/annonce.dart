@@ -73,11 +73,12 @@ class NouvelleAnnonce {
   final String? description;
 
   /// Ligne à insérer dans public.annonces.
-  /// statut = en_attente : l'annonce attend la validation d'un administrateur
-  /// (le trigger annonces_statut l'impose de toute façon).
+  /// statut = brouillon : l'annonce doit exister pour recevoir ses photos
+  /// (étape 2, story 6.2) ; elle passe « en attente » de validation quand
+  /// l'utilisateur termine (AnnonceRepository.envoyerEnValidation).
   Map<String, dynamic> versLigne(String idAnnonceur) => {
         ...versContenu(),
-        'statut': 'en_attente',
+        'statut': 'brouillon',
         'id_annonceur': idAnnonceur,
       };
 
@@ -108,12 +109,16 @@ class EditionAnnonce {
   /// Valeurs actuelles, qui pré-remplissent le formulaire.
   final NouvelleAnnonce valeurs;
 
-  /// Une annonce rejetée (ou un brouillon) doit être renvoyée explicitement
-  /// en validation (rejetee -> en_attente, autorisé par le trigger).
+  /// Une annonce rejetée (ou un brouillon) doit être envoyée explicitement
+  /// en validation à la fin du parcours (rejetee | brouillon -> en_attente,
+  /// autorisé par le trigger).
   /// Une annonce publiée y repasse toute seule si son contenu change
   /// (trigger annonces_statut) : il ne faut PAS envoyer le statut dans ce cas,
   /// sinon le trigger refuse la transition publiee -> en_attente.
   bool get renvoyerEnValidation => statut == StatutAnnonce.rejetee || statut == StatutAnnonce.brouillon;
+
+  EditionAnnonce copie({StatutAnnonce? statut, NouvelleAnnonce? valeurs}) =>
+      EditionAnnonce(id: id, statut: statut ?? this.statut, valeurs: valeurs ?? this.valeurs);
 }
 
 /// Annonce telle que renvoyée par la base après l'insertion.

@@ -26,6 +26,7 @@ import 'core/darimmo_theme.dart';
 import 'features/publish/data/annonce_repository.dart';
 import 'features/publish/models/annonce.dart';
 import 'features/publish/ui/publier_annonce_page.dart';
+import 'features/photos/data/photos_repository.dart';
 import 'features/mes_annonces/data/mes_annonces_repository.dart';
 import 'features/mes_annonces/ui/mes_annonces_page.dart';
 
@@ -151,15 +152,23 @@ class PushService {
 }
 
 // =====================================================================
-// Routes des modules de C (6.1 Publier, 6.3 Mes annonces)
+// Routes des modules de C (6.1 Publier + 6.2 Photos, 6.3 Mes annonces)
 // =====================================================================
 Route<void> publierAnnonceRoute() => MaterialPageRoute(
-      builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase)),
+      builder: (_) => PublierAnnoncePage(
+        repository: SupabaseAnnonceRepository(supabase),
+        photosRepository: SupabasePhotosRepository(supabase),
+      ),
     );
 
-/// [6.3] Même formulaire que la 6.1, pré-rempli ; renvoie l'annonce enregistrée.
+/// [6.3] Même parcours que la 6.1 (informations puis photos), pré-rempli ;
+/// renvoie l'annonce enregistrée.
 Route<Annonce> modifierAnnonceRoute(EditionAnnonce edition) => MaterialPageRoute(
-      builder: (_) => PublierAnnoncePage(repository: SupabaseAnnonceRepository(supabase), edition: edition),
+      builder: (_) => PublierAnnoncePage(
+        repository: SupabaseAnnonceRepository(supabase),
+        photosRepository: SupabasePhotosRepository(supabase),
+        edition: edition,
+      ),
     );
 
 Route<void> mesAnnoncesRoute() => MaterialPageRoute(

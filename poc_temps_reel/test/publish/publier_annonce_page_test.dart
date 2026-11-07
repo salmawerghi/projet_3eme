@@ -1,4 +1,4 @@
-// Tests de l'écran [6.1] avec un faux repository (sans Supabase).
+// Tests de l'écran [6.1] (+ parcours avec l'étape photos [6.2]) avec de faux repositories.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:poc_temps_reel/core/darimmo_theme.dart';
@@ -6,25 +6,38 @@ import 'package:poc_temps_reel/features/publish/data/annonce_repository.dart';
 import 'package:poc_temps_reel/features/publish/models/annonce.dart';
 import 'package:poc_temps_reel/features/publish/ui/publier_annonce_page.dart';
 
+import '../photos/faux_photos_repository.dart';
+
+/// Faux repository qui imite le trigger annonces_statut.
 class FauxRepository implements AnnonceRepository {
   FauxRepository({this.erreur});
   final String? erreur;
-  final recues = <NouvelleAnnonce>[];
+  final brouillons = <NouvelleAnnonce>[];
   final modifiees = <(EditionAnnonce, NouvelleAnnonce)>[];
+  final validees = <String>[];
+  final _valeurs = <String, NouvelleAnnonce>{};
 
   @override
-  Future<Annonce> publier(NouvelleAnnonce a) async {
-    recues.add(a);
+  Future<Annonce> creerBrouillon(NouvelleAnnonce a) async {
+    brouillons.add(a);
     if (erreur != null) throw PublicationException(erreur!);
-    return _annonce('id-test', a, StatutAnnonce.enAttente);
+    _valeurs['id-test'] = a;
+    return _annonce('id-test', a, StatutAnnonce.brouillon);
   }
 
   @override
   Future<Annonce> modifier(EditionAnnonce e, NouvelleAnnonce a) async {
     modifiees.add((e, a));
     if (erreur != null) throw PublicationException(erreur!);
-    // Comme le trigger : publiée ou rejetée modifiée -> en attente
-    return _annonce(e.id, a, StatutAnnonce.enAttente);
+    _valeurs[e.id] = a;
+    // Comme le trigger : une annonce publiée modifiée repasse en attente ; sinon statut inchangé.
+    return _annonce(e.id, a, e.statut == StatutAnnonce.publiee ? StatutAnnonce.enAttente : e.statut);
+  }
+
+  @override
+  Future<Annonce> envoyerEnValidation(String id) async {
+    validees.add(id);
+    return _annonce(id, _valeurs[id]!, StatutAnnonce.enAttente);
   }
 
   static Annonce _annonce(String id, NouvelleAnnonce a, StatutAnnonce s) => Annonce(
@@ -38,11 +51,23 @@ const villa = NouvelleAnnonce(
   prix: 450000, surface: 220, nbPieces: 5, ville: 'Hammamet', description: 'Avec piscine',
 );
 
-Future<void> ouvrir(WidgetTester tester, AnnonceRepository repo) async {
+void grandEcran(WidgetTester tester) {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(theme: darimmoTheme(), home: PublierAnnoncePage(repository: repo)));
+}
+
+Future<void> ouvrir(WidgetTester tester, AnnonceRepository repo,
+    {FauxPhotosRepository? photos, FausseGalerie? galerie}) async {
+  grandEcran(tester);
+  await tester.pumpWidget(MaterialApp(
+    theme: darimmoTheme(),
+    home: PublierAnnoncePage(
+      repository: repo,
+      photosRepository: photos ?? FauxPhotosRepository(),
+      choisirPhotos: (galerie ?? FausseGalerie()).choisir,
+    ),
+  ));
 }
 
 Future<void> remplir(WidgetTester tester) async {
@@ -54,8 +79,8 @@ Future<void> remplir(WidgetTester tester) async {
   await tester.pump();
 }
 
-Future<void> envoyer(WidgetTester tester) async {
-  await tester.tap(find.text('Envoyer pour validation'));
+Future<void> continuer(WidgetTester tester) async {
+  await tester.tap(find.text('Continuer'));
   await tester.pumpAndSettle();
 }
 
@@ -63,34 +88,65 @@ void main() {
   testWidgets('formulaire vide : erreurs affichées, rien n’est envoyé', (tester) async {
     final repo = FauxRepository();
     await ouvrir(tester, repo);
-    await envoyer(tester);
+    await continuer(tester);
 
     expect(find.text('Choisissez un type de bien'), findsOneWidget);
     expect(find.text('Le titre est obligatoire'), findsOneWidget);
     expect(find.text('Le prix est obligatoire'), findsOneWidget);
     expect(find.text('La surface est obligatoire'), findsOneWidget);
     expect(find.text('La ville est obligatoire'), findsOneWidget);
-    expect(repo.recues, isEmpty);
+    expect(repo.brouillons, isEmpty);
   });
 
-  testWidgets('formulaire rempli : envoi puis écran « en attente »', (tester) async {
+  testWidgets('parcours complet : brouillon, photos, puis « en attente »', (tester) async {
     final repo = FauxRepository();
-    await ouvrir(tester, repo);
+    final photos = FauxPhotosRepository();
+    final galerie = FausseGalerie([photo('salon.jpg'), photo('cuisine.jpg')]);
+    await ouvrir(tester, repo, photos: photos, galerie: galerie);
     await tester.tap(find.text('Louer'));
     await remplir(tester);
-    await envoyer(tester);
+    await continuer(tester);
 
-    expect(repo.recues, hasLength(1));
-    final a = repo.recues.single;
+    // Étape 1 : brouillon créé avec les valeurs saisies
+    final a = repo.brouillons.single;
     expect(a.typeBien, TypeBien.appartement);
     expect(a.typeOffre, TypeOffre.location);
     expect(a.prix, 385000);
     expect(a.surface, 145);
     expect(a.nbPieces, 3);
+    expect(a.versLigne('u1')['statut'], 'brouillon');
 
+    // Étape 2 : photos
+    expect(find.text('Étape 2 sur 2'), findsOneWidget);
+    await tester.tap(find.text('Ajouter'));
+    await tester.pumpAndSettle();
+    expect(photos.envoyees, ['salon.jpg', 'cuisine.jpg']);
+    expect(photos.ordres, [0, 1]);
+    expect(find.text('Photos (2/10)'), findsOneWidget);
+
+    await tester.tap(find.text('Envoyer pour validation'));
+    await tester.pumpAndSettle();
+    expect(repo.validees, ['id-test']);
     expect(find.text('Annonce envoyée !'), findsOneWidget);
     expect(find.text('En attente'), findsOneWidget);
     expect(find.text('385 000 DT/mois'), findsOneWidget);
+  });
+
+  testWidgets('retour au formulaire puis « Continuer » : le brouillon est mis à jour, pas dupliqué', (tester) async {
+    final repo = FauxRepository();
+    await ouvrir(tester, repo);
+    await remplir(tester);
+    await continuer(tester);
+    await tester.tap(find.text('Retour'));
+    await tester.pumpAndSettle();
+    expect(find.text('Publier une annonce'), findsOneWidget, reason: 'textes de création conservés');
+
+    await tester.enterText(find.widgetWithText(TextFormField, '385 000'), '390 000');
+    await continuer(tester);
+    expect(repo.brouillons, hasLength(1));
+    expect(repo.modifiees.single.$1.id, 'id-test');
+    expect(repo.modifiees.single.$2.prix, 390000);
+    expect(find.text('Envoyer pour validation'), findsOneWidget);
   });
 
   testWidgets('terrain : le compteur de pièces disparaît', (tester) async {
@@ -105,9 +161,9 @@ void main() {
     final repo = FauxRepository(erreur: 'Publication refusée : votre compte est peut-être bloqué.');
     await ouvrir(tester, repo);
     await remplir(tester);
-    await envoyer(tester);
+    await continuer(tester);
 
-    expect(find.text('Annonce envoyée !'), findsNothing);
+    expect(find.text('Étape 2 sur 2'), findsNothing);
     expect(find.textContaining('Publication refusée'), findsOneWidget);
   });
 
@@ -128,20 +184,23 @@ void main() {
       expect(e(StatutAnnonce.enAttente).renvoyerEnValidation, isFalse);
     });
 
-    Future<Annonce?> ouvrirEdition(WidgetTester tester, FauxRepository repo, StatutAnnonce statut) async {
-      tester.view.physicalSize = const Size(1170, 2532);
-      tester.view.devicePixelRatio = 3;
-      addTearDown(tester.view.reset);
-      Annonce? retour;
+    /// Ouvre le formulaire en modification ; [retour] reçoit ce que l'écran renvoie.
+    Future<void> ouvrirEdition(WidgetTester tester, FauxRepository repo, StatutAnnonce statut,
+        void Function(Annonce?) retour) async {
+      grandEcran(tester);
       await tester.pumpWidget(MaterialApp(
         theme: darimmoTheme(),
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
-              retour = await Navigator.push<Annonce>(context, MaterialPageRoute(
+              retour(await Navigator.push<Annonce>(context, MaterialPageRoute(
                 builder: (_) => PublierAnnoncePage(
-                    repository: repo, edition: EditionAnnonce(id: 'id-villa', statut: statut, valeurs: villa)),
-              ));
+                  repository: repo,
+                  photosRepository: FauxPhotosRepository(),
+                  choisirPhotos: FausseGalerie().choisir,
+                  edition: EditionAnnonce(id: 'id-villa', statut: statut, valeurs: villa),
+                ),
+              )));
             },
             child: const Text('ouvrir'),
           ),
@@ -149,12 +208,12 @@ void main() {
       ));
       await tester.tap(find.text('ouvrir'));
       await tester.pumpAndSettle();
-      return retour;
     }
 
-    testWidgets('formulaire pré-rempli, enregistrement puis retour à la liste', (tester) async {
+    testWidgets('annonce publiée : pré-remplie, enregistrée, « Terminer » sans renvoi', (tester) async {
       final repo = FauxRepository();
-      await ouvrirEdition(tester, repo, StatutAnnonce.publiee);
+      Annonce? retour;
+      await ouvrirEdition(tester, repo, StatutAnnonce.publiee, (a) => retour = a);
 
       expect(find.text('Modifier l’annonce'), findsOneWidget);
       expect(find.textContaining('elle sera retirée'), findsOneWidget);
@@ -164,22 +223,31 @@ void main() {
       expect(find.text('5'), findsOneWidget); // compteur de pièces
 
       await tester.enterText(find.widgetWithText(TextFormField, '450 000'), '420 000');
-      await tester.tap(find.text('Enregistrer'));
-      await tester.pumpAndSettle();
+      await continuer(tester);
 
-      expect(repo.recues, isEmpty, reason: 'pas de nouvelle annonce');
+      expect(repo.brouillons, isEmpty, reason: 'pas de nouvelle annonce');
       final (edition, valeurs) = repo.modifiees.single;
       expect(edition.id, 'id-villa');
       expect(valeurs.prix, 420000);
-      expect(valeurs.typeBien, TypeBien.villa);
       expect(valeurs.description, 'Avec piscine');
-      expect(find.text('Modifier l’annonce'), findsNothing, reason: 'écran fermé');
+
+      await tester.tap(find.text('Terminer'));
+      await tester.pumpAndSettle();
+      expect(repo.validees, isEmpty, reason: 'le trigger l’a déjà remise en attente');
+      expect(retour?.statut, StatutAnnonce.enAttente);
       expect(find.text('Annonce envoyée !'), findsNothing);
+      expect(find.text('ouvrir'), findsOneWidget, reason: 'écrans fermés');
     });
 
-    testWidgets('annonce rejetée : bouton « Renvoyer pour validation »', (tester) async {
-      await ouvrirEdition(tester, FauxRepository(), StatutAnnonce.rejetee);
-      expect(find.text('Renvoyer pour validation'), findsOneWidget);
+    testWidgets('annonce rejetée : « Renvoyer pour validation » à la fin', (tester) async {
+      final repo = FauxRepository();
+      Annonce? retour;
+      await ouvrirEdition(tester, repo, StatutAnnonce.rejetee, (a) => retour = a);
+      await continuer(tester);
+      await tester.tap(find.text('Renvoyer pour validation'));
+      await tester.pumpAndSettle();
+      expect(repo.validees, ['id-villa']);
+      expect(retour?.statut, StatutAnnonce.enAttente);
     });
   });
 }

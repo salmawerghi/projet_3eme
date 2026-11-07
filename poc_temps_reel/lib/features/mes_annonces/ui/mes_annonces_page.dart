@@ -55,9 +55,10 @@ class _Contenu extends StatelessWidget {
     if (edition == null || onModifier == null) return;
     final vm = context.read<MesAnnoncesViewModel>();
     final resultat = await onModifier!(context, edition);
-    if (resultat == null || !context.mounted) return; // fermé sans enregistrer
+    // Toujours recharger : l'étape 1 a pu enregistrer des changements (et des
+    // photos) même si l'utilisateur a quitté avant la fin du parcours.
     await vm.charger();
-    if (!context.mounted) return;
+    if (resultat == null || !context.mounted) return;
     final repasseEnAttente = resultat.statut == StatutAnnonce.enAttente && a.statut != StatutAnnonce.enAttente;
     _info(context, repasseEnAttente
         ? 'Annonce modifiée : elle est de nouveau en attente de validation.'

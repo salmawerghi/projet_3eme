@@ -95,19 +95,24 @@ class AnnonceCard extends StatelessWidget {
     const taille = Size(0, 42);
     const forme = RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14)));
     const texte = TextStyle(fontSize: 13, fontWeight: FontWeight.w800);
-    final rejetee = a.statut == StatutAnnonce.rejetee;
+    // Rejetée ou brouillon : il faudra (r)envoyer en validation -> bouton mis en avant.
+    final aEnvoyer = switch (a.statut) {
+      StatutAnnonce.rejetee => 'Modifier et renvoyer',
+      StatutAnnonce.brouillon => 'Compléter et envoyer',
+      _ => null,
+    };
 
     return Row(children: [
       if (modifier)
         Expanded(
-          child: rejetee
+          child: aEnvoyer != null
               ? FilledButton.tonalIcon(
                   onPressed: enCours ? null : onModifier,
                   style: FilledButton.styleFrom(
                       minimumSize: taille, shape: forme, textStyle: texte,
                       backgroundColor: DarColors.primarySoft, foregroundColor: DarColors.primary),
                   icon: const Icon(Icons.edit_outlined, size: 17),
-                  label: const Text('Modifier et renvoyer', overflow: TextOverflow.ellipsis),
+                  label: Text(aEnvoyer, overflow: TextOverflow.ellipsis),
                 )
               : OutlinedButton.icon(
                   onPressed: enCours ? null : onModifier,

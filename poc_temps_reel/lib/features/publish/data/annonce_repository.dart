@@ -19,13 +19,17 @@ class PublicationException implements Exception {
 }
 
 abstract class AnnonceRepository {
-  /// Enregistre l'annonce au statut « en attente » pour l'utilisateur connecté.
-  Future<Annonce> publier(NouvelleAnnonce annonce);
+  /// Étape 1 : enregistre l'annonce en BROUILLON pour l'utilisateur connecté
+  /// (elle doit exister pour recevoir ses photos à l'étape 2).
+  Future<Annonce> creerBrouillon(NouvelleAnnonce annonce);
 
-  /// [6.3] Enregistre les nouvelles valeurs d'une annonce existante.
-  /// Renvoie l'annonce avec son statut après modification (une annonce
-  /// publiée modifiée revient « en attente »).
+  /// [6.3] Enregistre les nouvelles valeurs d'une annonce existante, sans
+  /// toucher au statut. Renvoie l'annonce avec son statut après modification
+  /// (une annonce publiée modifiée revient « en attente » par le trigger).
   Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs);
+
+  /// Fin du parcours : brouillon ou rejetée -> « en attente » de validation.
+  Future<Annonce> envoyerEnValidation(String idAnnonce);
 }
 
 class SupabaseAnnonceRepository implements AnnonceRepository {
@@ -33,7 +37,7 @@ class SupabaseAnnonceRepository implements AnnonceRepository {
   final SupabaseClient _client;
 
   @override
-  Future<Annonce> publier(NouvelleAnnonce annonce) async {
+  Future<Annonce> creerBrouillon(NouvelleAnnonce annonce) async {
     final user = _client.auth.currentUser;
     if (user == null) {
       throw const PublicationException('Connectez-vous pour publier une annonce.');
@@ -59,18 +63,21 @@ class SupabaseAnnonceRepository implements AnnonceRepository {
   }
 
   @override
-  Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs) async {
+  Future<Annonce> modifier(EditionAnnonce edition, NouvelleAnnonce valeurs) =>
+      _mettreAJour(edition.id, valeurs.versContenu());
+
+  @override
+  Future<Annonce> envoyerEnValidation(String idAnnonce) => _mettreAJour(idAnnonce, {'statut': 'en_attente'});
+
+  Future<Annonce> _mettreAJour(String id, Map<String, dynamic> valeurs) async {
     if (_client.auth.currentUser == null) {
       throw const PublicationException('Connectez-vous pour modifier une annonce.');
     }
     try {
       final ligne = await _client
           .from('annonces')
-          .update({
-            ...valeurs.versContenu(),
-            if (edition.renvoyerEnValidation) 'statut': 'en_attente',
-          })
-          .eq('id', edition.id)
+          .update(valeurs)
+          .eq('id', id)
           .select('id, titre, type_bien, type_offre, prix, ville, statut, date_creation')
           .maybeSingle();
       // Aucune ligne : annonce supprimée entre-temps, ou refusée par RLS (compte bloqué).

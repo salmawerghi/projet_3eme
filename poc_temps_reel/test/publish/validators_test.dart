@@ -65,7 +65,8 @@ void main() {
       description: 'Lumineux',
     );
 
-    test('valeurs SQL, statut en_attente et annonceur connecté', () {
+    // Créée en brouillon (étape 1) ; « en attente » après l'étape photos (6.2).
+    test('valeurs SQL, statut brouillon et annonceur connecté', () {
       final l = base.versLigne('user-123');
       expect(l['titre'], 'Appartement S+3');
       expect(l['type_bien'], 'appartement');
@@ -74,7 +75,7 @@ void main() {
       expect(l['ville'], 'Ariana');
       expect(l['adresse'], isNull); // champ vide -> NULL
       expect(l['description'], 'Lumineux');
-      expect(l['statut'], 'en_attente');
+      expect(l['statut'], 'brouillon');
       expect(l['id_annonceur'], 'user-123');
     });
 

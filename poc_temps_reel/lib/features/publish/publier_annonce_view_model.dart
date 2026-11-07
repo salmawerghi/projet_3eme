@@ -14,7 +14,7 @@ import 'models/annonce.dart';
 class PublierAnnonceViewModel extends ChangeNotifier {
   /// [edition] non nul = modification d'une annonce existante (6.3) :
   /// les choix sont pré-remplis avec ses valeurs.
-  PublierAnnonceViewModel(this._repository, {this.edition}) {
+  PublierAnnonceViewModel(this._repository, {this.edition}) : creation = edition == null {
     final v = edition?.valeurs;
     if (v != null) {
       typeOffre = v.typeOffre;
@@ -23,9 +23,19 @@ class PublierAnnonceViewModel extends ChangeNotifier {
     }
   }
   final AnnonceRepository _repository;
-  final EditionAnnonce? edition;
 
-  bool get modification => edition != null;
+  /// Vrai si l'écran a été ouvert pour une NOUVELLE annonce (6.1).
+  final bool creation;
+
+  /// Annonce en cours d'édition. Pour une création, elle est remplie après
+  /// l'étape 1 (brouillon créé) : revenir au formulaire puis « Continuer »
+  /// met à jour ce brouillon au lieu d'en créer un second.
+  EditionAnnonce? edition;
+
+  /// Dernier état de l'annonce renvoyé par la base.
+  Annonce? enregistree;
+
+  bool get modification => !creation;
 
   TypeOffre typeOffre = TypeOffre.vente;
   TypeBien? typeBien; // null tant que l'utilisateur n'a pas choisi
@@ -59,8 +69,8 @@ class PublierAnnonceViewModel extends ChangeNotifier {
     return !typeBienManquant;
   }
 
-  /// Envoie l'annonce. Renvoie l'annonce créée, ou null en cas d'erreur
-  /// (le message est alors dans [erreur]).
+  /// Étape 1 : enregistre les informations (brouillon créé, ou annonce mise à jour).
+  /// Renvoie l'annonce, ou null en cas d'erreur (le message est dans [erreur]).
   Future<Annonce?> envoyer(NouvelleAnnonce annonce) async {
     if (envoiEnCours) return null; // évite le double envoi (double appui)
     envoiEnCours = true;
@@ -68,13 +78,38 @@ class PublierAnnonceViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final e = edition;
-      return e == null ? await _repository.publier(annonce) : await _repository.modifier(e, annonce);
+      final a = e == null ? await _repository.creerBrouillon(annonce) : await _repository.modifier(e, annonce);
+      enregistree = a;
+      edition = EditionAnnonce(id: a.id, statut: a.statut, valeurs: annonce);
+      return a;
     } on PublicationException catch (e) {
       erreur = e.message;
       return null;
     } finally {
       envoiEnCours = false;
       notifyListeners();
+    }
+  }
+
+  /// Bouton final de l'étape 2 : « Envoyer / Renvoyer pour validation »
+  /// (brouillon ou rejetée) ou « Terminer » (rien à changer).
+  String get libelleValidation {
+    if (!(edition?.renvoyerEnValidation ?? true)) return 'Terminer';
+    return creation || edition?.statut == StatutAnnonce.brouillon ? 'Envoyer pour validation' : 'Renvoyer pour validation';
+  }
+
+  /// Fin du parcours (étape 2). Renvoie null si tout va bien, sinon le message d'erreur.
+  Future<String?> valider() async {
+    final e = edition;
+    if (e == null) return 'Enregistrez d’abord les informations de l’annonce.';
+    if (!e.renvoyerEnValidation) return null;
+    try {
+      final a = await _repository.envoyerEnValidation(e.id);
+      enregistree = a;
+      edition = e.copie(statut: a.statut);
+      return null;
+    } on PublicationException catch (x) {
+      return x.message;
     }
   }
 }
