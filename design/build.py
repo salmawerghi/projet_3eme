@@ -1,7 +1,8 @@
 """Construit les maquettes DarImmo à partir de src/ :
    - maquettes_darimmo.html        (page web autonome, à ouvrir dans Chrome)
    - figma-plugin/manifest.json + code.js  (plugin Figma qui dessine les écrans)
-Usage :  python build.py   [dossier_copie_artifact]
+Usage :  python build.py        [dossier_copie_artifact]   -> v3 (src/)
+          python build.py v4     [dossier_copie_artifact]   -> v4 (v4/spec.js + v4/page.html, sorties dans v4/)
 """
 import base64, io, json, os, sys
 from PIL import Image
@@ -17,6 +18,8 @@ PHOTOS = {
     "salon4": "1502672260266-1c1ef2d93688", "chambre": "1505691938895-1758d7feb511",
     "terrain": "1500382017468-9049fed747ef", "local": "1441986300917-64674bd600d8",
 }
+PHOTOS_V4 = {"villa4": "1512917774080-9991f1c4c750", "villa5": "1564013799919-ab600027ffc6",
+             "nuit": "1600585154340-be6161a56a0c"}
 AVATARS = {"avatarF": "1494790108377-be9c29b29330", "avatarM": "1507003211169-0a1dd7228f2d",
            "avatarF2": "1534528741775-53994a69daeb"}
 
@@ -34,9 +37,9 @@ def encode(path, width=None, square=None, quality=70):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-def images_js():
+def images_js(extra=None):
     out = {}
-    for k, pid in PHOTOS.items():
+    for k, pid in list(PHOTOS.items()) + list((extra or {}).items()):
         out[k] = encode(os.path.join(IMG, pid + ".jpg"), width=640 if k != "villa3" else 600)
     for k, pid in AVATARS.items():
         out[k] = encode(os.path.join(IMG, pid + ".jpg"), square=192, quality=75)
@@ -58,8 +61,22 @@ def tokens_css(spec):
 
 
 def main():
-    imgs = images_js()
-    spec, rhtml, rfig, page = read("spec.js"), read("render_html.js"), read("render_figma.js"), read("page.html")
+    args = sys.argv[1:]
+    v4 = bool(args) and args[0] == "v4"
+    if v4:
+        args = args[1:]
+    out_dir = os.path.join(ROOT, "v4") if v4 else ROOT
+    out_name = "maquettes_darimmo_v4.html" if v4 else "maquettes_darimmo.html"
+
+    imgs = images_js(PHOTOS_V4 if v4 else None)
+    rhtml, rfig = read("render_html.js"), read("render_figma.js")
+    if v4:
+        with open(os.path.join(out_dir, "spec.js"), encoding="utf-8") as f:
+            spec = f.read()
+        with open(os.path.join(out_dir, "page.html"), encoding="utf-8") as f:
+            page = f.read()
+    else:
+        spec, page = read("spec.js"), read("page.html")
     light, dark, n = tokens_css(spec)
     html = (page.replace("/*__TOKENS_LIGHT__*/", light).replace("/*__TOKENS_DARK__*/", dark)
             .replace("/*__BUNDLE__*/", imgs + spec + "\n" + rhtml))
@@ -68,26 +85,27 @@ def main():
     local = ('<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
              '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
              '</head>\n<body>\n' + html + '\n</body>\n</html>\n')
-    with open(os.path.join(ROOT, "maquettes_darimmo.html"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_dir, out_name), "w", encoding="utf-8") as f:
         f.write(local)
 
     # 2) plugin Figma
-    plug = os.path.join(ROOT, "figma-plugin")
+    plug = os.path.join(out_dir, "figma-plugin")
     os.makedirs(plug, exist_ok=True)
-    manifest = {"name": "DarImmo Maquettes", "id": "darimmo-maquettes-v3", "api": "1.0.0", "main": "code.js",
+    manifest = {"name": "DarImmo Maquettes v4" if v4 else "DarImmo Maquettes",
+                "id": "darimmo-maquettes-v4" if v4 else "darimmo-maquettes-v3", "api": "1.0.0", "main": "code.js",
                 "editorType": ["figma"], "documentAccess": "dynamic-page",
                 "networkAccess": {"allowedDomains": ["none"]}}
     with open(os.path.join(plug, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
     with open(os.path.join(plug, "code.js"), "w", encoding="utf-8") as f:
-        f.write("/* Généré par build.py — ne pas modifier à la main : modifiez src/spec.js puis relancez build.py */\n")
+        f.write("/* Généré par build.py — ne pas modifier à la main : modifiez la spec puis relancez build.py */\n")
         f.write(imgs + spec + "\n" + rfig)
 
     # 3) copie pour publication (sans squelette)
-    if len(sys.argv) > 1:
-        with open(os.path.join(sys.argv[1], "maquettes_darimmo.html"), "w", encoding="utf-8") as f:
+    if args:
+        with open(os.path.join(args[0], out_name), "w", encoding="utf-8") as f:
             f.write(html)
-    print(f"OK · {n} couleurs · page {len(local)//1024} Ko · plugin {os.path.getsize(os.path.join(plug, 'code.js'))//1024} Ko")
+    print(f"OK · {'v4' if v4 else 'v3'} · {n} couleurs · page {len(local)//1024} Ko · plugin {os.path.getsize(os.path.join(plug, 'code.js'))//1024} Ko")
 
 
 if __name__ == "__main__":

@@ -62,9 +62,26 @@ function renderHTML(n, pDir) {
   st.position = 'relative';
   st.boxSizing = 'border-box';
   if (n.t === 'text') {
-    el.textContent = n.s;
+    /* *mot* = segment mis en valeur (italique display + couleur n.em) */
+    var parts = n.s.split('*');
+    if (parts.length > 2) {
+      parts.forEach(function (seg, i) {
+        if (!seg) return;
+        if (i % 2) {
+          var sp = document.createElement('span');
+          sp.textContent = seg;
+          sp.style.fontFamily = 'var(--font-display)';
+          sp.style.fontStyle = 'italic';
+          sp.style.fontWeight = '400';
+          if (n.em) sp.style.color = cssColor(n.em);
+          el.appendChild(sp);
+        } else el.appendChild(document.createTextNode(seg));
+      });
+    } else el.textContent = n.s;
+    if (n.font === 'display') { st.fontFamily = 'var(--font-display)'; st.fontWeight = '400'; }
+    if (n.it) st.fontStyle = 'italic';
     st.fontSize = n.size + 'px';
-    st.fontWeight = n.wt;
+    if (n.font !== 'display') st.fontWeight = n.wt;
     st.lineHeight = (n.lh || Math.round(n.size * 1.4)) + 'px';
     st.color = cssColor(n.color);
     if (n.ls) st.letterSpacing = n.ls + 'px';

@@ -7,6 +7,7 @@
    ============================================================ */
 var VARS = {};          // nom du token -> Variable Figma
 var FONT = {};          // graisse -> FontName
+var FONT_D = {};        // police display : { regular, italic }
 var IMG_HASH = {};      // clé image -> imageHash
 var WARN = [];
 
@@ -103,14 +104,20 @@ async function build(n, parent, pDir) {
   var node;
   if (n.t === 'text') {
     node = figma.createText();
-    node.fontName = FONT[n.wt] || FONT[500];
-    node.characters = n.s;
+    var parts = n.s.split('*'), plain = parts.join(''), ranges = [], pos = 0;
+    if (parts.length > 2) parts.forEach(function (seg, i) { if (i % 2 && seg) ranges.push([pos, pos + seg.length]); pos += seg.length; });
+    else plain = n.s;
+    node.fontName = n.font === 'display' ? (n.it ? FONT_D.italic : FONT_D.regular) : (FONT[n.wt] || FONT[500]);
+    node.characters = plain;
     node.fontSize = n.size;
     node.lineHeight = { unit: 'PIXELS', value: n.lh || Math.round(n.size * 1.4) };
     if (n.ls) node.letterSpacing = { unit: 'PIXELS', value: n.ls };
     if (n.align) node.textAlignHorizontal = n.align === 'center' ? 'CENTER' : n.align === 'right' ? 'RIGHT' : 'LEFT';
     node.fills = [paintFor(n.color)];
-    node.name = n.name || n.s.slice(0, 40);
+    ranges.forEach(function (r) {
+      try { node.setRangeFontName(r[0], r[1], FONT_D.italic); if (n.em) node.setRangeFills(r[0], r[1], [paintFor(n.em)]); } catch (e) { WARN.push('Texte riche : ' + e.message); }
+    });
+    node.name = n.name || plain.slice(0, 40);
     parent.appendChild(node);
     if (n.w === 'fill' && pDir) { node.textAutoResize = 'HEIGHT'; trySet(node, 'layoutSizingHorizontal', 'FILL'); }
     else if (typeof n.w === 'number') { node.resize(n.w, node.height); node.textAutoResize = 'HEIGHT'; }
@@ -176,8 +183,23 @@ async function build(n, parent, pDir) {
   return node;
 }
 
+async function loadDisplayFont() {
+  var list = (typeof FONTS !== 'undefined' && FONTS.display) ? FONTS.display : [];
+  for (var f = 0; f < list.length; f++) {
+    try {
+      await figma.loadFontAsync({ family: list[f], style: 'Regular' });
+      FONT_D.regular = { family: list[f], style: 'Regular' };
+      try { await figma.loadFontAsync({ family: list[f], style: 'Italic' }); FONT_D.italic = { family: list[f], style: 'Italic' }; }
+      catch (e) { FONT_D.italic = FONT_D.regular; }
+      return list[f];
+    } catch (e) { }
+  }
+  FONT_D.regular = FONT[500]; FONT_D.italic = FONT[500];
+  if (list.length) WARN.push('Police display introuvable (' + list.join(', ') + ') : remplacée par la police de texte.');
+  return null;
+}
 async function loadFonts() {
-  var families = ['Plus Jakarta Sans', 'Inter'];
+  var families = (typeof FONTS !== 'undefined' && FONTS.body) ? FONTS.body : ['Plus Jakarta Sans', 'Inter'];
   var styles = { 400: ['Regular'], 500: ['Medium'], 600: ['SemiBold', 'Semi Bold'], 700: ['Bold'], 800: ['ExtraBold', 'Extra Bold'] };
   for (var f = 0; f < families.length; f++) {
     var ok = true, res = {};
@@ -188,13 +210,13 @@ async function loadFonts() {
       }
       if (!found) { ok = false; break; }
     }
-    if (ok) { FONT = res; return families[f]; }
+    if (ok) { FONT = res; var d = await loadDisplayFont(); return families[f] + (d ? ' + ' + d : ''); }
   }
-  throw new Error('Aucune police disponible (Plus Jakarta Sans ou Inter).');
+  throw new Error('Aucune police disponible (' + families.join(', ') + ').');
 }
 
 async function setupVariables() {
-  var NAME = 'DarImmo · Couleurs';
+  var NAME = (typeof META !== 'undefined' && META.collection) || 'DarImmo · Couleurs';
   var cols = await figma.variables.getLocalVariableCollectionsAsync();
   var col = null;
   for (var i = 0; i < cols.length; i++) if (cols[i].name === NAME) col = cols[i];
@@ -230,7 +252,7 @@ async function main() {
   loadImages();
 
   var page = figma.createPage();
-  page.name = 'DarImmo · Maquettes v3';
+  page.name = (typeof META !== 'undefined' && META.page) || 'DarImmo · Maquettes v3';
   await figma.setCurrentPageAsync(page);
 
   var GAP_X = 80, y = 0, total = 0;
