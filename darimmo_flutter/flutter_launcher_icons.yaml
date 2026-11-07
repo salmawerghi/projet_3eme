@@ -1,0 +1,9 @@
+# Icône de l'application (logo des maquettes v3 : arche de porte, bleu Sidi Bou Saïd).
+# Regénérer après un changement de logo :  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"                    # icône classique (fond bleu plein)
+  adaptive_icon_background: "#1D5FAD"                  # icône adaptative Android 8+ : fond…
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"  # …et dessin (transparent)
+  adaptive_icon_monochrome: "assets/icon/icon_foreground.png"  # icônes à thème (Android 13+)
