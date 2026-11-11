@@ -33,7 +33,7 @@ import 'package:darimmo/features/profile/presentation/screens/profil_page.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
 import 'package:darimmo/features/publish/presentation/screens/mes_annonces_page.dart';
 import 'package:darimmo/features/publish/presentation/screens/publier_annonce_page.dart';
-import 'package:darimmo/features/search/presentation/screens/accueil_page.dart';
+import 'package:darimmo/features/search/presentation/screens/accueil_page.dart' show AccueilPage;
 
 GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, String initiale = '/accueil'}) {
   PublierAnnoncePage formulaire({EditionAnnonce? edition}) => PublierAnnoncePage(
