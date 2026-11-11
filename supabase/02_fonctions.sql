@@ -26,16 +26,18 @@ $$;
 
 -- ---------------------------------------------------------------------
 -- Trigger : création du profil à l'inscription (story 2.1)
--- L'application envoie le nom dans les métadonnées :
---   supabase.auth.signUp(email, password, data: {'nom': 'Ali'})
+-- L'application envoie le nom (et le téléphone facultatif) dans les métadonnées :
+--   supabase.auth.signUp(email, password, data: {'nom': 'Ali', 'telephone': '+21622345678'})
 -- ---------------------------------------------------------------------
 create or replace function public.creer_profil()
 returns trigger
 language plpgsql security definer set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, email, nom)
-  values (new.id, new.email, coalesce(new.raw_user_meta_data ->> 'nom', ''));
+  insert into public.profiles (id, email, nom, telephone)
+  values (new.id, new.email,
+          left(trim(coalesce(new.raw_user_meta_data ->> 'nom', '')), 80),
+          nullif(trim(coalesce(new.raw_user_meta_data ->> 'telephone', '')), ''));
   return new;
 end;
 $$;

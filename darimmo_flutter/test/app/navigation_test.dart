@@ -3,7 +3,6 @@
 import 'package:darimmo/app.dart';
 import 'package:darimmo/core/router/app_router.dart';
 import 'package:darimmo/core/services.dart';
-import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/chat/data/models/resume_conversation.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/notifications/data/push_service.dart';
@@ -14,37 +13,11 @@ import 'package:darimmo/features/publish/data/repositories/mes_annonces_reposito
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../features/auth/faux_auth.dart';
 import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
 import '../features/search/fausse_recherche.dart';
-
-class FauxAuth extends AuthRepository {
-  FauxAuth({this.connecte = false});
-  bool connecte;
-  int connexions = 0;
-
-  @override
-  bool get estConnecte => connecte;
-  @override
-  String? get idUtilisateur => connecte ? 'u1' : null;
-  @override
-  String? get email => connecte ? 'vendeur@darimmo.test' : null;
-
-  @override
-  Future<void> connecter({required String email, required String motDePasse}) async {
-    if (motDePasse != 'Test1234!') throw const ConnexionException('Email ou mot de passe incorrect.');
-    connexions++;
-    connecte = true;
-    notifyListeners();
-  }
-
-  @override
-  Future<void> deconnecter() async {
-    connecte = false;
-    notifyListeners();
-  }
-}
 
 class FauxAnnonces implements AnnonceRepository {
   @override

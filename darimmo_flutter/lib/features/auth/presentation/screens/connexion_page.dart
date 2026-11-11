@@ -1,7 +1,7 @@
 // =====================================================================
 // DarImmo - Écran de connexion PROVISOIRE (squelette 1.6)
-// À remplacer par le membre A : [2.2] Se connecter (maquettes A1-A3),
-// [2.1] S'inscrire, [2.4] Mot de passe oublié.
+// À remplacer par le membre A : [2.2] Se connecter (maquette A2),
+// [2.4] Mot de passe oublié. Le lien « Créer un compte » ouvre la 2.1.
 // Les comptes de test du seed (05_seed.sql) sont proposés pour la démo.
 // =====================================================================
 import 'package:flutter/material.dart';
@@ -10,19 +10,25 @@ import 'package:darimmo/core/theme/darimmo_theme.dart';
 import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 
 class ConnexionPage extends StatefulWidget {
-  const ConnexionPage({super.key, required this.auth, this.apresConnexion});
+  const ConnexionPage({super.key, required this.auth, this.apresConnexion, this.onCreerCompte, this.emailInitial});
   final AuthRepository auth;
 
   /// Ex : enregistrer le jeton de notifications.
   final Future<void> Function()? apresConnexion;
+
+  /// [2.1] Ouvre l'écran d'inscription.
+  final void Function(BuildContext context)? onCreerCompte;
+
+  /// Email pré-rempli (retour de l'inscription).
+  final String? emailInitial;
 
   @override
   State<ConnexionPage> createState() => _ConnexionPageState();
 }
 
 class _ConnexionPageState extends State<ConnexionPage> {
-  final _email = TextEditingController(text: 'vendeur@darimmo.test');
-  final _motDePasse = TextEditingController(text: 'Test1234!');
+  late final _email = TextEditingController(text: widget.emailInitial ?? 'vendeur@darimmo.test');
+  late final _motDePasse = TextEditingController(text: widget.emailInitial == null ? 'Test1234!' : '');
   bool _enCours = false;
   String? _erreur;
 
@@ -97,6 +103,16 @@ class _ConnexionPageState extends State<ConnexionPage> {
             onPressed: _enCours ? null : _connecter,
             child: Text(_enCours ? 'Connexion…' : 'Se connecter'),
           ),
+          if (widget.onCreerCompte != null) ...[
+            const SizedBox(height: 8),
+            Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              const Text('Pas encore de compte ?', style: TextStyle(fontSize: 14, color: DarColors.text2)),
+              TextButton(
+                onPressed: () => widget.onCreerCompte!(context),
+                child: const Text('Créer un compte', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ]),
+          ],
         ]),
       ),
     );

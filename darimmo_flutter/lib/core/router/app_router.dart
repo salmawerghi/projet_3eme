@@ -4,7 +4,8 @@
 // Toutes les routes de l'application sont ici. Pour brancher son écran :
 // remplacer l'écran « BientotDisponible » de sa route par le vrai.
 //
-//   /connexion                      A  2.1 / 2.2 (provisoire)
+//   /connexion                      A  2.2 (provisoire)
+//   /inscription                    A  2.1 (extra de /connexion : email pré-rempli)
 //   /accueil      (onglet)          B  3.1 / 3.2
 //   /favoris      (onglet)          B  5.1 / 5.2
 //   /messages     (onglet)          C  7.3
@@ -24,6 +25,7 @@ import 'package:darimmo/core/router/navigation_principale.dart';
 import 'package:darimmo/core/services.dart';
 import 'package:darimmo/features/admin/presentation/screens/admin_page.dart';
 import 'package:darimmo/features/auth/presentation/screens/connexion_page.dart';
+import 'package:darimmo/features/auth/presentation/screens/inscription_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/conversations_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/discussion_page.dart';
 import 'package:darimmo/features/detail/presentation/screens/detail_annonce_page.dart';
@@ -51,15 +53,30 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
     initialLocation: initiale,
     refreshListenable: s.auth, // connexion / déconnexion -> redirect recalculé
     redirect: (context, etat) {
-      final surConnexion = etat.matchedLocation == '/connexion';
-      if (!s.auth.estConnecte) return surConnexion ? null : '/connexion';
-      if (surConnexion) return '/accueil';
+      final pagePublique = etat.matchedLocation == '/connexion' || etat.matchedLocation == '/inscription';
+      if (!s.auth.estConnecte) return pagePublique ? null : '/connexion';
+      if (pagePublique) return '/accueil';
       return null;
     },
     routes: [
       GoRoute(
         path: '/connexion',
-        builder: (_, _) => ConnexionPage(auth: s.auth, apresConnexion: () async => s.push?.enregistrer()),
+        builder: (_, etat) => ConnexionPage(
+          // Nouvelle clé si un email est transmis : les champs repartent de lui.
+          key: ValueKey(etat.extra),
+          auth: s.auth,
+          emailInitial: etat.extra as String?,
+          apresConnexion: () async => s.push?.enregistrer(),
+          onCreerCompte: (context) => context.push('/inscription'),
+        ),
+      ),
+      GoRoute(
+        path: '/inscription',
+        builder: (_, _) => InscriptionPage(
+          auth: s.auth,
+          apresConnexion: () async => s.push?.enregistrer(),
+          onSeConnecter: (context, email) => context.go('/connexion', extra: email),
+        ),
       ),
 
       // ----- Onglets (barre du bas) : chacun garde son historique
