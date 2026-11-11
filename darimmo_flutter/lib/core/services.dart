@@ -11,6 +11,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
+import 'package:darimmo/features/chat/data/repositories/chat_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/notifications/data/push_service.dart';
 import 'package:darimmo/features/publish/data/repositories/annonce_repository.dart';
@@ -27,9 +28,9 @@ class Services {
     required this.photos,
     required this.mesAnnonces,
     required this.conversations,
+    required this.chat,
     required this.geocodage,
     required this.localisation,
-    this.client,
     this.push,
     this.choisirPhotos = choisirDansLaGalerie,
     this.afficherTuilesCarte = true,
@@ -37,19 +38,15 @@ class Services {
 
   /// Version réelle : tout passe par Supabase.
   factory Services.supabase(SupabaseClient client) => Services(
-        client: client,
         auth: SupabaseAuthRepository(client),
         annonces: SupabaseAnnonceRepository(client),
         photos: SupabasePhotosRepository(client),
         mesAnnonces: SupabaseMesAnnoncesRepository(client),
         conversations: SupabaseConversationsRepository(client),
+        chat: SupabaseChatRepository(client),
         geocodage: NominatimGeocodage(),
         localisation: const GeolocatorLocalisation(),
       );
-
-  /// Client brut, pour les écrans pas encore passés par un repository
-  /// (discussion 7.2). null dans les tests.
-  final SupabaseClient? client;
 
   // ----- Membre A
   final AuthRepository auth;
@@ -59,6 +56,7 @@ class Services {
   final PhotosRepository photos;
   final MesAnnoncesRepository mesAnnonces;
   final ConversationsRepository conversations;
+  final ChatRepository chat;
 
   /// null sur le web, ou si Firebase n'est pas configuré (pas de google-services.json).
   PushService? push;

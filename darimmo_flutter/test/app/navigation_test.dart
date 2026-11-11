@@ -14,6 +14,7 @@ import 'package:darimmo/features/publish/data/repositories/mes_annonces_reposito
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
 
@@ -77,6 +78,7 @@ Services fauxServices(FauxAuth auth) => Services(
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
       conversations: FaussesConversations(),
+      chat: FauxChat(),
       geocodage: FauxGeocodage(),
       localisation: FausseLocalisation(),
       choisirPhotos: FausseGalerie().choisir,

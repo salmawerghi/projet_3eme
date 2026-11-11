@@ -89,13 +89,12 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
       // ----- Écrans plein écran (par-dessus les onglets)
       GoRoute(
         path: '/messages/:id',
-        builder: (_, etat) => s.client == null
-            ? const Scaffold(body: Center(child: Text('Discussion indisponible hors connexion Supabase')))
-            : DiscussionPage(
-                client: s.client!,
-                idConversation: etat.pathParameters['id']!,
-                titre: etat.extra as String?,
-              ),
+        builder: (_, etat) => DiscussionPage(
+              repository: s.chat,
+              idConversation: etat.pathParameters['id']!,
+              titre: etat.extra as String?,
+              onVoirAnnonce: (context, idAnnonce) => context.push('/annonces/$idAnnonce'),
+            ),
       ),
       GoRoute(path: '/annonces/:id', builder: (_, etat) => DetailAnnoncePage(idAnnonce: etat.pathParameters['id']!)),
       GoRoute(path: '/carte', builder: (_, _) => const CartePage()),

@@ -15,6 +15,7 @@ import 'package:darimmo/core/theme/darimmo_theme.dart';
 import 'package:darimmo/features/chat/presentation/viewmodels/conversations_view_model.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/chat/data/models/resume_conversation.dart';
+import 'package:darimmo/features/chat/presentation/widgets/avatar_darimmo.dart';
 
 /// Ouvre la discussion ; la liste est rechargée au retour (non-lus remis à zéro).
 typedef OuvrirConversation = Future<void> Function(BuildContext context, ResumeConversation conversation);
@@ -149,7 +150,7 @@ class LigneConversation extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: DarColors.border))),
           child: Row(children: [
-            _Avatar(url: c.photoInterlocuteur, initiales: c.initiales),
+            AvatarDarImmo(url: c.photoInterlocuteur, initiales: c.initiales),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -217,30 +218,6 @@ class LigneConversation extends StatelessWidget {
             ),
           ]),
         ),
-      ),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.url, required this.initiales});
-  final String? url;
-  final String initiales;
-
-  @override
-  Widget build(BuildContext context) {
-    final lettres = Container(
-      color: DarColors.primarySoft,
-      alignment: Alignment.center,
-      child: Text(initiales, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: DarColors.primary)),
-    );
-    return ClipOval(
-      child: SizedBox(
-        width: 54,
-        height: 54,
-        child: url == null
-            ? lettres
-            : Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => lettres),
       ),
     );
   }
