@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
+import 'package:darimmo/core/widgets/bandeau_erreur.dart';
 import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/auth/presentation/validators_auth.dart';
 import 'package:darimmo/features/auth/presentation/viewmodels/inscription_view_model.dart';
@@ -95,7 +96,7 @@ class _InscriptionState extends State<_Inscription> {
           key: _form,
           child: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 24), children: [
             if (vm.erreurGenerale != null) ...[
-              _Bandeau(message: vm.erreurGenerale!),
+              BandeauErreur(message: vm.erreurGenerale!),
               const SizedBox(height: 16),
             ],
             TextFormField(
@@ -246,26 +247,6 @@ class _IndicateurForce extends StatelessWidget {
             style: const TextStyle(fontSize: 12, color: DarColors.muted)),
       ]),
     ]);
-  }
-}
-
-class _Bandeau extends StatelessWidget {
-  const _Bandeau({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: DarColors.dangerSoft, borderRadius: BorderRadius.circular(14)),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Icon(Icons.error_outline, color: DarColors.danger, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(message, style: const TextStyle(color: DarColors.danger, fontWeight: FontWeight.w600)),
-        ),
-      ]),
-    );
   }
 }
 

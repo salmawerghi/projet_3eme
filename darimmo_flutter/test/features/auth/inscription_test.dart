@@ -116,8 +116,8 @@ void main() {
 
     await tester.tap(find.widgetWithText(FilledButton, 'Se connecter'));
     await tester.pumpAndSettle();
-    expect(find.text('Connexion'), findsOneWidget);
-    final email = tester.widget<TextField>(find.widgetWithText(TextField, 'Email'));
+    expect(find.text('Content de vous revoir'), findsOneWidget);
+    final email = tester.widget<TextField>(find.widgetWithText(TextField, 'Adresse email'));
     final mdp = tester.widget<TextField>(find.widgetWithText(TextField, 'Mot de passe'));
     expect(email.controller!.text, 'yasmine.t@gmail.com');
     expect(mdp.controller!.text, isEmpty);
@@ -167,7 +167,7 @@ void main() {
     await tester.ensureVisible(lien);
     await tester.tap(lien);
     await tester.pumpAndSettle();
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Content de vous revoir'), findsOneWidget);
     expect(find.text('Gratuit · moins d’une minute'), findsNothing);
   });
 }

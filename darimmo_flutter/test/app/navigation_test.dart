@@ -80,8 +80,10 @@ void main() {
 
     await tester.tap(find.text('J’ai déjà un compte'));
     await tester.pumpAndSettle();
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Content de vous revoir'), findsOneWidget, reason: 'maquette A2');
 
+    await tester.enterText(find.widgetWithText(TextFormField, 'Adresse email'), 'vendeur@darimmo.test');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Mot de passe'), 'Test1234!');
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
     expect(auth.connexions, 1);
@@ -119,10 +121,33 @@ void main() {
 
   testWidgets('mauvais mot de passe : message clair', (tester) async {
     await demarrer(tester, connecte: false, initiale: '/bienvenue/connexion');
-    await tester.enterText(find.widgetWithText(TextField, 'Mot de passe'), 'faux');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Adresse email'), 'vendeur@darimmo.test');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Mot de passe'), 'faux');
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
     expect(find.text('Email ou mot de passe incorrect.'), findsOneWidget);
+  });
+
+  testWidgets('connexion : champs vides signalés, pas de comptes de test ni de texte provisoire', (tester) async {
+    final auth = await demarrer(tester, connecte: false, initiale: '/bienvenue/connexion');
+    expect(find.text('vendeur'), findsNothing);
+    expect(find.text('acheteur'), findsNothing);
+    expect(find.textContaining('provisoire'), findsNothing);
+
+    await tester.tap(find.text('Se connecter'));
+    await tester.pumpAndSettle();
+    expect(find.text('L’adresse email est obligatoire'), findsOneWidget);
+    expect(find.text('Entrez votre mot de passe'), findsOneWidget);
+    expect(auth.connexions, 0);
+  });
+
+  testWidgets('connexion : l’œil affiche puis masque le mot de passe', (tester) async {
+    await demarrer(tester, connecte: false, initiale: '/bienvenue/connexion');
+    TextField champ() => tester.widget<TextField>(find.widgetWithText(TextField, 'Mot de passe'));
+    expect(champ().obscureText, isTrue);
+    await tester.tap(find.byTooltip('Afficher le mot de passe'));
+    await tester.pump();
+    expect(champ().obscureText, isFalse);
   });
 
   testWidgets('les 4 onglets de la maquette et le bouton Publier', (tester) async {

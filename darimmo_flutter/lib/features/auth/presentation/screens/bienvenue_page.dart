@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
+import 'package:darimmo/core/widgets/logo_darimmo.dart';
 
 class BienvenuePage extends StatelessWidget {
   const BienvenuePage({
@@ -49,7 +50,7 @@ class BienvenuePage extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const _Logo(),
+                        const LogoDarImmo(taille: 40, clair: true),
                         const Spacer(),
                         const SizedBox(height: 24),
                         const _Pastille(),
@@ -99,27 +100,6 @@ class BienvenuePage extends StatelessWidget {
         ]),
       ),
     );
-  }
-}
-
-class _Logo extends StatelessWidget {
-  const _Logo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(Icons.home_rounded, color: Colors.white),
-      ),
-      const SizedBox(width: 10),
-      const Text('DarImmo', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-    ]);
   }
 }
 
