@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
+import '../features/search/fausse_recherche.dart';
 
 class FauxAuth extends AuthRepository {
   FauxAuth({this.connecte = false});
@@ -74,6 +75,7 @@ class FaussesConversations implements ConversationsRepository {
 
 Services fauxServices(FauxAuth auth) => Services(
       auth: auth,
+      recherche: FausseRecherche([annonceTest(1, titre: 'Appartement S+2 lumineux')]),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
@@ -107,7 +109,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(auth.connexions, 1);
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('3.1 Voir la liste des annonces · 3.2 Filtrer les annonces'), findsOneWidget);
+    expect(find.text('Trouvez votre chez-vous'), findsOneWidget, reason: 'accueil 3.1 du membre B');
+    expect(find.text('Appartement S+2 lumineux'), findsOneWidget);
   });
 
   testWidgets('mauvais mot de passe : message clair', (tester) async {

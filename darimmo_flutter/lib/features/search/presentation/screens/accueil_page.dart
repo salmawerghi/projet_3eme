@@ -1,708 +1,292 @@
+// =====================================================================
+// DarImmo - [3.1] Voir la liste des annonces · [3.2] Filtrer (maquettes B1-B2)
+// Membre B (version d'origine), restructuré pour le squelette 1.6
+//
+// Critères 3.1 : seules les annonces publiées ; photo, titre, prix, ville,
+//   surface ; chargement progressif ; indicateur de chargement ; message si vide.
+// Critères 3.2 : prix min/max, ville, type, vente/location, pièces minimum ;
+//   liste mise à jour après application ; « Aucun bien trouvé » ; Réinitialiser.
+// Toucher une annonce ouvre son détail (route /annonces/:id, story 3.3).
+// =====================================================================
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
-// ============================================================
-// 1. MODÈLE
-// ============================================================
-class AnnonceRecherche {
-  final String id;
-  final String titre;
-  final String? description;
-  final String typeBien;
-  final String typeOffre;
-  final num prix;
-  final num? surface;
-  final int? nbPieces;
-  final String? adresse;
-  final String? ville;
-  final double? latitude;
-  final double? longitude;
-  final String statut;
-  final String idAnnonceur;
-  final DateTime dateCreation;
-  final List<String> photos;
+import 'package:darimmo/core/theme/darimmo_theme.dart';
+import 'package:darimmo/features/publish/data/models/annonce.dart' show TypeBien, TypeOffre;
+import 'package:darimmo/features/search/data/models/annonce_recherche.dart';
+import 'package:darimmo/features/search/data/repositories/recherche_repository.dart';
+import 'package:darimmo/features/search/presentation/viewmodels/accueil_view_model.dart';
+import 'package:darimmo/features/search/presentation/widgets/carte_annonce_recherche.dart';
+import 'package:darimmo/features/search/presentation/widgets/feuille_filtres.dart';
 
-  const AnnonceRecherche({
-    required this.id,
-    required this.titre,
-    this.description,
-    required this.typeBien,
-    required this.typeOffre,
-    required this.prix,
-    this.surface,
-    this.nbPieces,
-    this.adresse,
-    this.ville,
-    this.latitude,
-    this.longitude,
-    required this.statut,
-    required this.idAnnonceur,
-    required this.dateCreation,
-    this.photos = const [],
+class AccueilPage extends StatelessWidget {
+  const AccueilPage({
+    super.key,
+    required this.repository,
+    required this.onOuvrir,
+    this.onVoirCarte,
+    this.maintenant,
   });
 
-  String? get photoCouverture => photos.isEmpty ? null : photos.first;
+  final RechercheRepository repository;
+  final void Function(BuildContext context, AnnonceRecherche annonce) onOuvrir;
+  final void Function(BuildContext context)? onVoirCarte;
 
-  factory AnnonceRecherche.fromMap(Map<String, dynamic> m) {
-    final rawPhotos = (m['photos'] as List?) ?? const [];
-    final sorted = rawPhotos
-        .cast<Map<String, dynamic>>()
-        .where((p) => p['url'] != null)
-        .toList()
-      ..sort((a, b) =>
-          (a['ordre'] as int? ?? 0).compareTo(b['ordre'] as int? ?? 0));
-
-    return AnnonceRecherche(
-      id: m['id'].toString(),
-      titre: m['titre'] as String,
-      description: m['description'] as String?,
-      typeBien: m['type_bien'] as String,
-      typeOffre: m['type_offre'] as String,
-      prix: m['prix'] as num,
-      surface: m['surface'] as num?,
-      nbPieces: m['nb_pieces'] as int?,
-      adresse: m['adresse'] as String?,
-      ville: m['ville'] as String?,
-      latitude: (m['latitude'] as num?)?.toDouble(),
-      longitude: (m['longitude'] as num?)?.toDouble(),
-      statut: m['statut'] as String,
-      idAnnonceur: m['id_annonceur'].toString(),
-      dateCreation: DateTime.parse(m['date_creation'] as String),
-      photos: sorted.map((p) => p['url'] as String).toList(),
-    );
-  }
-}
-
-// ============================================================
-// 2. FILTRE
-// ============================================================
-class FiltreRecherche {
-  final String? typeOffre;
-  final String? typeBien;
-  final double? prixMin;
-  final double? prixMax;
-  final String? ville;
-  final int? nbPiecesMin;
-
-  const FiltreRecherche({
-    this.typeOffre,
-    this.typeBien,
-    this.prixMin,
-    this.prixMax,
-    this.ville,
-    this.nbPiecesMin,
-  });
-
-  static const vide = FiltreRecherche();
-
-  bool get estVide =>
-      typeOffre == null &&
-      typeBien == null &&
-      prixMin == null &&
-      prixMax == null &&
-      (ville == null || ville!.isEmpty) &&
-      nbPiecesMin == null;
-
-  FiltreRecherche copyWith({
-    String? Function()? typeOffre,
-    String? Function()? typeBien,
-    double? Function()? prixMin,
-    double? Function()? prixMax,
-    String? Function()? ville,
-    int? Function()? nbPiecesMin,
-  }) {
-    return FiltreRecherche(
-      typeOffre: typeOffre != null ? typeOffre() : this.typeOffre,
-      typeBien: typeBien != null ? typeBien() : this.typeBien,
-      prixMin: prixMin != null ? prixMin() : this.prixMin,
-      prixMax: prixMax != null ? prixMax() : this.prixMax,
-      ville: ville != null ? ville() : this.ville,
-      nbPiecesMin: nbPiecesMin != null ? nbPiecesMin() : this.nbPiecesMin,
-    );
-  }
-}
-
-// ============================================================
-// 3. REPOSITORY (requêtes Supabase)
-// ============================================================
-class RechercheRepository {
-  RechercheRepository([SupabaseClient? client])
-      : _db = client ?? Supabase.instance.client;
-
-  final SupabaseClient _db;
-  static const pageSize = 10;
-
-  Future<List<AnnonceRecherche>> fetchPage({
-    required int page,
-    FiltreRecherche filter = FiltreRecherche.vide,
-  }) async {
-    var query = _db
-        .from('annonces')
-        .select('*, photos(url, ordre)')
-        .eq('statut', 'publiee');
-
-    if (filter.typeOffre != null) {
-      query = query.eq('type_offre', filter.typeOffre!);
-    }
-    if (filter.typeBien != null) {
-      query = query.eq('type_bien', filter.typeBien!);
-    }
-    if (filter.prixMin != null) query = query.gte('prix', filter.prixMin!);
-    if (filter.prixMax != null) query = query.lte('prix', filter.prixMax!);
-    if (filter.nbPiecesMin != null) {
-      query = query.gte('nb_pieces', filter.nbPiecesMin!);
-    }
-    if (filter.ville != null && filter.ville!.trim().isNotEmpty) {
-      query = query.ilike('ville', '%${filter.ville!.trim()}%');
-    }
-
-    final from = page * pageSize;
-    final data = await query
-        .order('date_creation', ascending: false)
-        .range(from, from + pageSize - 1);
-
-    return (data as List)
-        .map((e) => AnnonceRecherche.fromMap(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<int> count(FiltreRecherche filter) async {
-    var query = _db.from('annonces').select('id').eq('statut', 'publiee');
-
-    if (filter.typeOffre != null) {
-      query = query.eq('type_offre', filter.typeOffre!);
-    }
-    if (filter.typeBien != null) {
-      query = query.eq('type_bien', filter.typeBien!);
-    }
-    if (filter.prixMin != null) query = query.gte('prix', filter.prixMin!);
-    if (filter.prixMax != null) query = query.lte('prix', filter.prixMax!);
-    if (filter.nbPiecesMin != null) {
-      query = query.gte('nb_pieces', filter.nbPiecesMin!);
-    }
-    if (filter.ville != null && filter.ville!.trim().isNotEmpty) {
-      query = query.ilike('ville', '%${filter.ville!.trim()}%');
-    }
-
-    final res = await query.count(CountOption.exact);
-    return res.count;
-  }
-}
-
-// ============================================================
-// 4. CARTE D'ANNONCE
-// ============================================================
-class _AnnonceCard extends StatelessWidget {
-  const _AnnonceCard({required this.annonce, required this.onTap});
-
-  final AnnonceRecherche annonce;
-  final VoidCallback onTap;
-
-  String get _prix {
-    final s = annonce.prix.round().toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
-      buf.write(s[i]);
-    }
-    return '$buf DT${annonce.typeOffre == 'location' ? ' / mois' : ''}';
-  }
+  /// Heure de référence pour « il y a 2 h » (fixée dans les tests).
+  final DateTime Function()? maintenant;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: annonce.photoCouverture == null
-                      ? Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.home_work_outlined, size: 48),
-                        )
-                      : Image.network(
-                          annonce.photoCouverture!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image_outlined),
-                          ),
-                        ),
-                ),
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: annonce.typeOffre == 'vente'
-                          ? Colors.orange
-                          : Colors.teal,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      annonce.typeOffre.toUpperCase(),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${annonce.typeBien.toUpperCase()} · ${annonce.typeOffre.toUpperCase()}',
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: Colors.orange.shade800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    annonce.titre,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  if (annonce.ville != null)
-                    Row(children: [
-                      const Icon(Icons.place_outlined,
-                          size: 14, color: Colors.grey),
-                      const SizedBox(width: 2),
-                      Text(annonce.ville!, style: theme.textTheme.bodySmall),
-                    ]),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _prix,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary),
-                      ),
-                      Row(children: [
-                        if (annonce.surface != null)
-                          Text('${annonce.surface!.round()} m²  '),
-                        if (annonce.nbPieces != null)
-                          Text('S+${annonce.nbPieces}'),
-                      ]),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ChangeNotifierProvider(
+      create: (_) => AccueilViewModel(repository)..demarrer(),
+      child: _Contenu(page: this),
     );
   }
 }
 
-// ============================================================
-// 5. FEUILLE DE FILTRES (B2)
-// ============================================================
-Future<FiltreRecherche?> showFiltresSheet(
-  BuildContext context, {
-  required FiltreRecherche initial,
-  required RechercheRepository repo,
-}) {
-  return showModalBottomSheet<FiltreRecherche>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (_) => _FiltresSheet(initial: initial, repo: repo),
-  );
-}
-
-class _FiltresSheet extends StatefulWidget {
-  const _FiltresSheet({required this.initial, required this.repo});
-  final FiltreRecherche initial;
-  final RechercheRepository repo;
+class _Contenu extends StatefulWidget {
+  const _Contenu({required this.page});
+  final AccueilPage page;
 
   @override
-  State<_FiltresSheet> createState() => _FiltresSheetState();
+  State<_Contenu> createState() => _ContenuState();
 }
 
-class _FiltresSheetState extends State<_FiltresSheet> {
-  static const _prixMaxSlider = 3000000.0;
-  static const _types = {
-    'appartement': 'Appartement',
-    'villa': 'Villa',
-    'terrain': 'Terrain',
-    'local': 'Local',
-  };
-
-  late String _offre;
-  String? _typeBien;
-  late RangeValues _prix;
-  late final TextEditingController _ville;
-  int? _pieces;
-  int? _nbResultats;
+class _ContenuState extends State<_Contenu> {
+  final _defilement = ScrollController();
+  final _recherche = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    final f = widget.initial;
-    _offre = f.typeOffre ?? 'vente';
-    _typeBien = f.typeBien;
-    _prix = RangeValues(f.prixMin ?? 0, f.prixMax ?? _prixMaxSlider);
-    _ville = TextEditingController(text: f.ville ?? '');
-    _pieces = f.nbPiecesMin;
-    _rafraichirCompteur();
+    _defilement.addListener(() {
+      if (_defilement.position.extentAfter < 400) context.read<AccueilViewModel>().chargerSuite();
+    });
   }
 
   @override
   void dispose() {
-    _ville.dispose();
+    _defilement.dispose();
+    _recherche.dispose();
     super.dispose();
   }
 
-  FiltreRecherche get _filtre => FiltreRecherche(
-        typeOffre: _offre,
-        typeBien: _typeBien,
-        prixMin: _prix.start > 0 ? _prix.start : null,
-        prixMax: _prix.end < _prixMaxSlider ? _prix.end : null,
-        ville: _ville.text.trim().isEmpty ? null : _ville.text.trim(),
-        nbPiecesMin: _pieces,
+  Future<void> _ouvrirFiltres(AccueilViewModel vm) async {
+    final nouveau = await ouvrirFeuilleFiltres(context, initial: vm.filtre, compter: vm.compter, villes: vm.villes);
+    if (nouveau != null) await vm.appliquer(nouveau);
+  }
+
+  /// « Tout » efface aussi la barre de recherche, pour que l'écran reste cohérent.
+  Future<void> _toutAfficher(AccueilViewModel vm) {
+    _recherche.clear();
+    return vm.toutAfficher();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<AccueilViewModel>();
+    return Scaffold(
+      body: SafeArea(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: Text('Trouvez votre chez-vous',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: DarColors.text)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Expanded(
+                child: ValueListenableBuilder(
+                  valueListenable: _recherche,
+                  builder: (context, valeur, _) => TextField(
+                    controller: _recherche,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Ville, quartier, titre…',
+                      prefixIcon: const Icon(Icons.search, color: DarColors.muted),
+                      suffixIcon: valeur.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Effacer la recherche',
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                _recherche.clear();
+                                vm.chercher('');
+                              },
+                            ),
+                    ),
+                    onSubmitted: vm.chercher,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Badge(
+                isLabelVisible: vm.filtre.nbFiltresFeuille > 0,
+                label: Text('${vm.filtre.nbFiltresFeuille}'),
+                backgroundColor: DarColors.accent,
+                child: IconButton.filled(
+                  tooltip: 'Filtres',
+                  style: IconButton.styleFrom(
+                    fixedSize: const Size(52, 52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () => _ouvrirFiltres(vm),
+                  icon: const Icon(Icons.tune),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          _Puces(vm: vm, onTout: () => _toutAfficher(vm)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+            child: Row(children: [
+              Expanded(
+                child: Text(vm.filtre.estVide ? 'Annonces récentes' : 'Résultats',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: DarColors.text)),
+              ),
+              if (widget.page.onVoirCarte case final voir?)
+                TextButton.icon(
+                  onPressed: () => voir(context),
+                  iconAlignment: IconAlignment.end,
+                  icon: const Icon(Icons.map_outlined, size: 16),
+                  label: const Text('Voir la carte'),
+                ),
+            ]),
+          ),
+          Expanded(child: _corps(vm)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _corps(AccueilViewModel vm) {
+    if (vm.premierChargement) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (vm.erreur case final message?) {
+      return _Message(
+        icone: Icons.wifi_off_rounded,
+        titre: 'Impossible de charger les annonces',
+        texte: message,
+        bouton: 'Réessayer',
+        action: vm.recharger,
       );
+    }
+    if (vm.annonces.isEmpty) {
+      return vm.filtre.estVide
+          ? const _Message(
+              icone: Icons.home_work_outlined,
+              titre: 'Aucune annonce pour l’instant',
+              texte: 'Les nouvelles annonces apparaîtront ici dès leur publication.',
+            )
+          : _Message(
+              icone: Icons.search_off_rounded,
+              titre: 'Aucun bien trouvé',
+              texte: 'Essayez d’élargir vos critères.',
+              bouton: 'Réinitialiser les filtres',
+              action: () => _toutAfficher(vm),
+            );
+    }
 
-  Future<void> _rafraichirCompteur() async {
-    try {
-      final n = await widget.repo.count(_filtre);
-      if (mounted) setState(() => _nbResultats = n);
-    } catch (_) {}
-  }
-
-  void _maj(VoidCallback fn) {
-    setState(fn);
-    _rafraichirCompteur();
-  }
-
-  void _reinitialiser() {
-    _ville.clear();
-    _maj(() {
-      _offre = 'vente';
-      _typeBien = null;
-      _prix = const RangeValues(0, _prixMaxSlider);
-      _pieces = null;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 16 + bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Filtres', style: Theme.of(context).textTheme.titleLarge),
-                TextButton(
-                    onPressed: _reinitialiser,
-                    child: const Text('Réinitialiser')),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'vente', label: Text('Acheter')),
-                ButtonSegment(value: 'location', label: Text('Louer')),
-              ],
-              selected: {_offre},
-              onSelectionChanged: (s) => _maj(() => _offre = s.first),
-            ),
-            const SizedBox(height: 20),
-            const Text('Type de bien',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            Wrap(
-              spacing: 8,
-              children: _types.entries
-                  .map((e) => ChoiceChip(
-                        label: Text(e.value),
-                        selected: _typeBien == e.key,
-                        onSelected: (sel) =>
-                            _maj(() => _typeBien = sel ? e.key : null),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Prix : ${_prix.start.round()} DT – '
-              '${_prix.end >= _prixMaxSlider ? "illimité" : "${_prix.end.round()} DT"}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            RangeSlider(
-              values: _prix,
-              min: 0,
-              max: _prixMaxSlider,
-              divisions: 60,
-              onChanged: (v) => setState(() => _prix = v),
-              onChangeEnd: (_) => _rafraichirCompteur(),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _ville,
-              decoration: const InputDecoration(
-                labelText: 'Ville',
-                prefixIcon: Icon(Icons.place_outlined),
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (_) => _rafraichirCompteur(),
-            ),
-            const SizedBox(height: 20),
-            const Text('Pièces minimum',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Tous'),
-                  selected: _pieces == null,
-                  onSelected: (_) => _maj(() => _pieces = null),
-                ),
-                for (final n in [1, 2, 3, 4])
-                  ChoiceChip(
-                    label: Text('S+$n${n == 4 ? "+" : ""}'),
-                    selected: _pieces == n,
-                    onSelected: (_) => _maj(() => _pieces = n),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context, _filtre),
-                child: Text(_nbResultats == null
-                    ? 'Afficher les annonces'
-                    : 'Afficher $_nbResultats annonces'),
-              ),
-            ),
-          ],
-        ),
+    final maintenant = (widget.page.maintenant ?? DateTime.now)();
+    final annonces = vm.annonces;
+    final avecPied = vm.aEncore || vm.erreurSuite != null;
+    return RefreshIndicator(
+      onRefresh: vm.recharger,
+      child: ListView.builder(
+        controller: _defilement,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        itemCount: annonces.length + (avecPied ? 1 : 0),
+        itemBuilder: (context, i) {
+          if (i < annonces.length) {
+            return CarteAnnonceRecherche(
+              annonce: annonces[i],
+              maintenant: maintenant,
+              onTap: () => widget.page.onOuvrir(context, annonces[i]),
+            );
+          }
+          if (vm.erreurSuite case final message?) {
+            return Column(children: [
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(color: DarColors.danger)),
+              TextButton(onPressed: vm.reessayerSuite, child: const Text('Réessayer')),
+            ]);
+          }
+          // Le pied de liste est visible : on demande la suite (utile aussi quand
+          // la première page ne remplit pas l'écran et qu'on ne peut pas défiler).
+          if (!vm.chargement) WidgetsBinding.instance.addPostFrameCallback((_) => vm.chargerSuite());
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.5)),
+              SizedBox(width: 10),
+              Text('Chargement des annonces suivantes…',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: DarColors.muted)),
+            ]),
+          );
+        },
       ),
     );
   }
 }
 
-// ============================================================
-// 6. ÉCRAN D'ACCUEIL (B1)
-// ============================================================
-class AccueilPage extends StatefulWidget {
-  const AccueilPage({super.key});
+/// Puces rapides de la maquette B1 : toucher une puce active la désactive.
+class _Puces extends StatelessWidget {
+  const _Puces({required this.vm, required this.onTout});
+  final AccueilViewModel vm;
+  final VoidCallback onTout;
 
   @override
-  State<AccueilPage> createState() => _AccueilPageState();
-}
-
-class _AccueilPageState extends State<AccueilPage> {
-  final _repo = RechercheRepository();
-  final _scroll = ScrollController();
-
-  final List<AnnonceRecherche> _annonces = [];
-  FiltreRecherche _filtre = FiltreRecherche.vide;
-  int _page = 0;
-  bool _loading = false;
-  bool _hasMore = true;
-  Object? _erreur;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(() {
-      if (_scroll.position.extentAfter < 300) _charger();
-    });
-    _charger();
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  Future<void> _charger() async {
-    if (_loading || !_hasMore) return;
-    setState(() {
-      _loading = true;
-      _erreur = null;
-    });
-    try {
-      final batch = await _repo.fetchPage(page: _page, filter: _filtre);
-      if (!mounted) return;
-      setState(() {
-        _annonces.addAll(batch);
-        _hasMore = batch.length == RechercheRepository.pageSize;
-        _page++;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _erreur = e);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _recharger([FiltreRecherche? nouveau]) async {
-    setState(() {
-      if (nouveau != null) _filtre = nouveau;
-      _annonces.clear();
-      _page = 0;
-      _hasMore = true;
-    });
-    await _charger();
-  }
-
-  Future<void> _ouvrirFiltres() async {
-    final res = await showFiltresSheet(context, initial: _filtre, repo: _repo);
-    if (res != null) _recharger(res);
-  }
-
-  Widget _chipsRapides() {
-    Widget chip(String label, bool selected, VoidCallback onTap) => Padding(
+  Widget build(BuildContext context) {
+    final f = vm.filtre;
+    Widget puce(String libelle, bool active, VoidCallback onTap) => Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-              label: Text(label),
-              selected: selected,
-              onSelected: (_) => onTap()),
+          child: ChoiceChip(label: Text(libelle), selected: active, onSelected: (_) => onTap()),
         );
-
     return SizedBox(
-      height: 44,
+      height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          chip('Tous', _filtre.estVide,
-              () => _recharger(FiltreRecherche.vide)),
-          chip('Vente', _filtre.typeOffre == 'vente',
-              () => _recharger(_filtre.copyWith(typeOffre: () => 'vente'))),
-          chip('Location', _filtre.typeOffre == 'location',
-              () => _recharger(_filtre.copyWith(typeOffre: () => 'location'))),
-          chip(
-              'Appartement',
-              _filtre.typeBien == 'appartement',
-              () => _recharger(
-                  _filtre.copyWith(typeBien: () => 'appartement'))),
+          puce('Tout', f.estVide, onTout),
+          puce('Vente', f.typeOffre == TypeOffre.vente, () => vm.basculerOffre(TypeOffre.vente)),
+          puce('Location', f.typeOffre == TypeOffre.location, () => vm.basculerOffre(TypeOffre.location)),
+          for (final t in [TypeBien.appartement, TypeBien.villa, TypeBien.terrain])
+            puce(t.libelle, f.typeBien == t, () => vm.basculerType(t)),
         ],
       ),
     );
   }
+}
+
+class _Message extends StatelessWidget {
+  const _Message({required this.icone, required this.titre, required this.texte, this.bouton, this.action});
+  final IconData icone;
+  final String titre;
+  final String texte;
+  final String? bouton;
+  final VoidCallback? action;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Trouvez votre chez-vous',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Villa, quartier, ville…',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      isDense: true,
-                    ),
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (v) => _recharger(_filtre.copyWith(
-                        ville: () => v.trim().isEmpty ? null : v.trim())),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                    onPressed: _ouvrirFiltres, icon: const Icon(Icons.tune)),
-              ]),
-            ),
-            const SizedBox(height: 8),
-            _chipsRapides(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text('Annonces récentes',
-                  style: Theme.of(context).textTheme.titleMedium),
-            ),
-            Expanded(child: _corps()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _corps() {
-    if (_annonces.isEmpty && _loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_annonces.isEmpty && _erreur != null) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Impossible de charger les annonces.'),
-          TextButton(
-              onPressed: () => _recharger(), child: const Text('Réessayer')),
-        ]),
-      );
-    }
-    if (_annonces.isEmpty) {
-      return const Center(
-          child: Text('Aucune annonce ne correspond à vos critères.'));
-    }
-    return RefreshIndicator(
-      onRefresh: () => _recharger(),
-      child: ListView.builder(
-        controller: _scroll,
-        itemCount: _annonces.length + (_hasMore ? 1 : 0),
-        itemBuilder: (context, i) {
-          if (i >= _annonces.length) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          final a = _annonces[i];
-          return _AnnonceCard(
-            annonce: a,
-            onTap: () => context.push('/annonces/${a.id}'),
-          );
-        },
-      ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
+      children: [
+        Icon(icone, size: 56, color: DarColors.muted),
+        const SizedBox(height: 16),
+        Text(titre,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: DarColors.text)),
+        const SizedBox(height: 6),
+        Text(texte, textAlign: TextAlign.center, style: const TextStyle(color: DarColors.text2)),
+        if (bouton != null) ...[
+          const SizedBox(height: 16),
+          OutlinedButton(onPressed: action, child: Text(bouton!)),
+        ],
+      ],
     );
   }
 }

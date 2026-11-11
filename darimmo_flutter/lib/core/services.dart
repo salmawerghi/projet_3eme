@@ -18,12 +18,14 @@ import 'package:darimmo/features/publish/data/repositories/annonce_repository.da
 import 'package:darimmo/features/publish/data/repositories/mes_annonces_repository.dart';
 import 'package:darimmo/features/publish/data/repositories/photos_repository.dart';
 import 'package:darimmo/features/publish/data/services/choisir_photos.dart';
+import 'package:darimmo/features/search/data/repositories/recherche_repository.dart';
 import 'package:darimmo/core/location/geocodage.dart';
 import 'package:darimmo/core/location/localisation.dart';
 
 class Services {
   Services({
     required this.auth,
+    required this.recherche,
     required this.annonces,
     required this.photos,
     required this.mesAnnonces,
@@ -39,6 +41,7 @@ class Services {
   /// Version réelle : tout passe par Supabase.
   factory Services.supabase(SupabaseClient client) => Services(
         auth: SupabaseAuthRepository(client),
+        recherche: SupabaseRechercheRepository(client),
         annonces: SupabaseAnnonceRepository(client),
         photos: SupabasePhotosRepository(client),
         mesAnnonces: SupabaseMesAnnoncesRepository(client),
@@ -50,6 +53,9 @@ class Services {
 
   // ----- Membre A
   final AuthRepository auth;
+
+  // ----- Membre B
+  final RechercheRepository recherche;
 
   // ----- Membre C
   final AnnonceRepository annonces;

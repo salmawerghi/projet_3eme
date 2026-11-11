@@ -66,7 +66,16 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => NavigationPrincipale(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [GoRoute(path: '/accueil', builder: (_, _) => const AccueilPage())]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: '/accueil',
+              builder: (_, _) => AccueilPage(
+                repository: s.recherche,
+                onOuvrir: (context, a) => context.push('/annonces/${a.id}'),
+                onVoirCarte: (context) => context.push('/carte'),
+              ),
+            ),
+          ]),
           StatefulShellBranch(routes: [GoRoute(path: '/favoris', builder: (_, _) => const FavorisPage())]),
           StatefulShellBranch(routes: [
             GoRoute(
