@@ -58,6 +58,9 @@ class FauxRepository implements ConversationsRepository {
     ecoute = true;
     return _flux.stream;
   }
+
+  @override
+  Future<String> ouvrirAvecAnnonceur(String idAnnonce) => throw UnimplementedError();
 }
 
 void main() {

@@ -40,19 +40,34 @@ class FaussesMesAnnonces implements MesAnnoncesRepository {
 }
 
 class FaussesConversations implements ConversationsRepository {
+  /// [7.1] annonce -> conversation déjà ouverte (pour vérifier la reprise).
+  final ouvertes = <String, String>{};
+  int ouvertures = 0;
+
+  /// Erreur à lever par ouvrirAvecAnnonceur (null = succès).
+  ContactException? erreurContact;
+
   @override
   Future<List<ResumeConversation>> lister() async => const [];
   @override
   Stream<void> changements() => const Stream.empty();
+
+  @override
+  Future<String> ouvrirAvecAnnonceur(String idAnnonce) async {
+    ouvertures++;
+    final erreur = erreurContact;
+    if (erreur != null) throw erreur;
+    return ouvertes.putIfAbsent(idAnnonce, () => 'c-${ouvertes.length + 1}');
+  }
 }
 
-Services fauxServices(FauxAuth auth) => Services(
+Services fauxServices(FauxAuth auth, {FaussesConversations? conversations}) => Services(
       auth: auth,
       recherche: FausseRecherche([annonceTest(1, titre: 'Appartement S+2 lumineux')]),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
-      conversations: FaussesConversations(),
+      conversations: conversations ?? FaussesConversations(),
       chat: FauxChat(),
       geocodage: FauxGeocodage(),
       localisation: FausseLocalisation(),
@@ -60,12 +75,13 @@ Services fauxServices(FauxAuth auth) => Services(
       afficherTuilesCarte: false,
     );
 
-Future<FauxAuth> demarrer(WidgetTester tester, {bool connecte = true, String? initiale}) async {
+Future<FauxAuth> demarrer(WidgetTester tester,
+    {bool connecte = true, String? initiale, FaussesConversations? conversations}) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final auth = FauxAuth(connecte: connecte);
-  final routeur = creerRouteur(fauxServices(auth), initiale: initiale);
+  final routeur = creerRouteur(fauxServices(auth, conversations: conversations), initiale: initiale);
   addTearDown(routeur.dispose);
   await tester.pumpWidget(DarImmoApp(routeur: routeur));
   await tester.pumpAndSettle();

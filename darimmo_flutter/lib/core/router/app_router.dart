@@ -31,6 +31,7 @@ import 'package:darimmo/features/auth/presentation/screens/connexion_page.dart';
 import 'package:darimmo/features/auth/presentation/screens/inscription_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/conversations_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/discussion_page.dart';
+import 'package:darimmo/features/chat/presentation/widgets/bouton_contacter.dart';
 import 'package:darimmo/features/detail/presentation/screens/detail_annonce_page.dart';
 import 'package:darimmo/features/favorites/presentation/screens/favoris_page.dart';
 import 'package:darimmo/features/map/presentation/screens/carte_page.dart';
@@ -143,7 +144,25 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
               onVoirAnnonce: (context, idAnnonce) => context.push('/annonces/$idAnnonce'),
             ),
       ),
-      GoRoute(path: '/annonces/:id', builder: (_, etat) => DetailAnnoncePage(idAnnonce: etat.pathParameters['id']!)),
+      GoRoute(
+        path: '/annonces/:id',
+        builder: (_, etat) {
+          final id = etat.pathParameters['id']!;
+          return DetailAnnoncePage(
+            idAnnonce: id,
+            // [7.1] membre C : B place ce bouton dans son écran 3.3.
+            boutonContacter: (idAnnonceur) => BoutonContacter(
+              idAnnonce: id,
+              repository: s.conversations,
+              estConnecte: s.auth.estConnecte,
+              estMonAnnonce: idAnnonceur != null && idAnnonceur == s.auth.idUtilisateur,
+              onOuvrirConversation: (context, idConversation) => context.push('/messages/$idConversation'),
+              onSeConnecter: (context) => context.go('/bienvenue/connexion'),
+              onCreerCompte: (context) => context.go('/bienvenue/inscription'),
+            ),
+          );
+        },
+      ),
       GoRoute(path: '/carte', builder: (_, _) => const CartePage()),
       GoRoute(path: '/publier', builder: (_, _) => formulaire()),
       GoRoute(

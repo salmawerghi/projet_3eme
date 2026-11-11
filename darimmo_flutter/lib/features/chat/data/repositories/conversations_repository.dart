@@ -22,6 +22,32 @@ class ConversationsException implements Exception {
   String toString() => message;
 }
 
+/// [7.1] Erreur du bouton « Contacter ».
+class ContactException implements Exception {
+  const ContactException(this.message, {this.connexionRequise = false});
+  final String message;
+
+  /// Vrai si l'utilisateur doit d'abord se connecter (critère « compte obligatoire »).
+  final bool connexionRequise;
+
+  /// Traduit les erreurs levées par public.ouvrir_conversation (02_fonctions.sql).
+  factory ContactException.depuisServeur(String message) {
+    if (message.contains('Connexion obligatoire')) {
+      return const ContactException('Connectez-vous pour contacter l’annonceur.', connexionRequise: true);
+    }
+    if (message.contains('vous-même')) {
+      return const ContactException('C’est votre annonce : vous ne pouvez pas vous contacter vous-même.');
+    }
+    if (message.contains('introuvable')) {
+      return const ContactException('Cette annonce n’est plus disponible.');
+    }
+    return const ContactException('Erreur du serveur. Réessayez.');
+  }
+
+  @override
+  String toString() => message;
+}
+
 abstract class ConversationsRepository {
   /// Mes conversations, de la plus récente à la plus ancienne.
   Future<List<ResumeConversation>> lister();
@@ -29,11 +55,38 @@ abstract class ConversationsRepository {
   /// Émet un événement à chaque changement dans mes conversations.
   /// L'abonnement Realtime est fermé quand on annule l'écoute.
   Stream<void> changements();
+
+  /// [7.1] Ouvre la conversation avec l'annonceur de [idAnnonce], ou reprend
+  /// celle qui existe déjà. Renvoie son id. Lève [ContactException].
+  Future<String> ouvrirAvecAnnonceur(String idAnnonce);
 }
 
 class SupabaseConversationsRepository implements ConversationsRepository {
   SupabaseConversationsRepository(this._client);
   final SupabaseClient _client;
+
+  @override
+  Future<String> ouvrirAvecAnnonceur(String idAnnonce) async {
+    if (_client.auth.currentUser == null) {
+      throw const ContactException('Connectez-vous pour contacter l’annonceur.', connexionRequise: true);
+    }
+    final Object? id;
+    try {
+      // La fonction SQL vérifie tout : connexion, annonce publiée, pas soi-même,
+      // et « on conflict do nothing » reprend la conversation existante.
+      id = await _client.rpc('ouvrir_conversation', params: {'p_annonce': idAnnonce});
+    } on PostgrestException catch (e) {
+      debugPrint('[7.1] ${e.code} : ${e.message}');
+      throw ContactException.depuisServeur(e.message);
+    } on AuthException catch (_) {
+      throw const ContactException('Session expirée : reconnectez-vous.', connexionRequise: true);
+    } catch (e) {
+      debugPrint('[7.1] $e');
+      throw const ContactException('Connexion impossible. Vérifiez Internet et réessayez.');
+    }
+    if (id is! String) throw const ContactException('Erreur du serveur. Réessayez.');
+    return id;
+  }
 
   @override
   Future<List<ResumeConversation>> lister() async {
