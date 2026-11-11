@@ -40,7 +40,13 @@ enum ResultatInscription {
   confirmationEmail,
 }
 
-const messageEmailDejaUtilise = 'Cet email est déjà utilisé. Connectez-vous ou choisissez une autre adresse.';
+/// Adresse ouverte par le lien de confirmation : elle rouvre l'app
+/// (intent-filter dans AndroidManifest.xml) et supabase_flutter ouvre la
+/// session tout seul. Doit être autorisée dans Supabase > Authentication >
+/// URL Configuration > Redirect URLs, sinon Supabase renvoie vers le Site URL.
+const lienRetourConfirmation = 'com.darimmo://connexion';
+
+const messageEmailDejaUtilise ='Cet email est déjà utilisé. Connectez-vous ou choisissez une autre adresse.';
 
 /// ChangeNotifier : prévient le routeur à chaque connexion / déconnexion.
 abstract class AuthRepository extends ChangeNotifier {
@@ -109,6 +115,7 @@ class SupabaseAuthRepository extends AuthRepository {
       reponse = await _client.auth.signUp(
         email: email.trim(),
         password: motDePasse,
+        emailRedirectTo: kIsWeb ? null : lienRetourConfirmation,
         data: {'nom': nom.trim(), 'telephone': ?telephone},
       );
     } on AuthException catch (e) {
@@ -128,7 +135,11 @@ class SupabaseAuthRepository extends AuthRepository {
   @override
   Future<void> renvoyerConfirmation(String email) async {
     try {
-      await _client.auth.resend(type: OtpType.signup, email: email.trim());
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: email.trim(),
+        emailRedirectTo: kIsWeb ? null : lienRetourConfirmation,
+      );
     } on AuthException catch (e) {
       throw _erreurInscription(e);
     } catch (_) {

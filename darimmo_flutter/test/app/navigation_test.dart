@@ -60,7 +60,7 @@ Services fauxServices(FauxAuth auth) => Services(
       afficherTuilesCarte: false,
     );
 
-Future<FauxAuth> demarrer(WidgetTester tester, {bool connecte = true, String initiale = '/accueil'}) async {
+Future<FauxAuth> demarrer(WidgetTester tester, {bool connecte = true, String? initiale}) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -73,10 +73,14 @@ Future<FauxAuth> demarrer(WidgetTester tester, {bool connecte = true, String ini
 }
 
 void main() {
-  testWidgets('non connecté : redirigé vers la connexion, puis accueil après connexion', (tester) async {
+  testWidgets('non connecté : bienvenue (A1), connexion, puis accueil', (tester) async {
     final auth = await demarrer(tester, connecte: false);
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('Trouvez le bien qui vous ressemble, partout en Tunisie.'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
+
+    await tester.tap(find.text('J’ai déjà un compte'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connexion'), findsOneWidget);
 
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
@@ -86,8 +90,35 @@ void main() {
     expect(find.text('Appartement S+2 lumineux'), findsOneWidget);
   });
 
-  testWidgets('mauvais mot de passe : message clair', (tester) async {
+  testWidgets('bouton retour de la connexion : revient à la bienvenue', (tester) async {
     await demarrer(tester, connecte: false);
+    await tester.tap(find.text('J’ai déjà un compte'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('J’ai déjà un compte'), findsOneWidget);
+  });
+
+  testWidgets('visiteur : « Continuer sans compte » montre les annonces, un onglet privé ramène à la bienvenue',
+      (tester) async {
+    await demarrer(tester, connecte: false);
+    await tester.tap(find.text('Continuer sans compte'));
+    await tester.pumpAndSettle();
+    expect(find.text('Appartement S+2 lumineux'), findsOneWidget, reason: '3.1 « En tant que visiteur »');
+
+    await tester.tap(find.text('Messages'));
+    await tester.pumpAndSettle();
+    expect(find.text('J’ai déjà un compte'), findsOneWidget);
+  });
+
+  testWidgets('session conservée : l’app s’ouvre directement sur l’accueil', (tester) async {
+    await demarrer(tester);
+    expect(find.text('Trouvez votre chez-vous'), findsOneWidget);
+    expect(find.text('Continuer sans compte'), findsNothing);
+  });
+
+  testWidgets('mauvais mot de passe : message clair', (tester) async {
+    await demarrer(tester, connecte: false, initiale: '/bienvenue/connexion');
     await tester.enterText(find.widgetWithText(TextField, 'Mot de passe'), 'faux');
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
@@ -128,7 +159,7 @@ void main() {
 
     await tester.tap(find.text('Se déconnecter'));
     await tester.pumpAndSettle();
-    expect(find.text('Connexion'), findsOneWidget);
+    expect(find.text('J’ai déjà un compte'), findsOneWidget, reason: 'retour à la bienvenue');
   });
 
   testWidgets('route du détail d’une annonce (3.3, membre B)', (tester) async {

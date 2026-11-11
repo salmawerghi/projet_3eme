@@ -30,6 +30,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- [2.1] Le lien de confirmation de l'email rouvre l'app :
+                 com.darimmo://connexion (à autoriser dans Supabase > Authentication >
+                 URL Configuration > Redirect URLs). supabase_flutter ouvre la session. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.darimmo" android:host="connexion"/>
+            </intent-filter>
+            <!-- Le lien est lu par supabase_flutter (app_links), pas par go_router. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

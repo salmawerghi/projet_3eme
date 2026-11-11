@@ -58,8 +58,9 @@ class _ConnexionPageState extends State<ConnexionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(), // flèche retour vers la bienvenue (maquette A2)
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(24, 48, 24, 24), children: [
+        child: ListView(padding: const EdgeInsets.fromLTRB(24, 8, 24, 24), children: [
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Container(
               width: 44,
