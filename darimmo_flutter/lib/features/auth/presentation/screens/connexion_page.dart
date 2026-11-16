@@ -2,8 +2,8 @@
 // DarImmo - Écran de connexion (maquette A2)
 // Story [2.2] Se connecter du membre A : email + mot de passe, message
 // clair si les identifiants sont faux. Lien « Créer un compte » -> 2.1.
-// Pas encore dans cet écran : « Mot de passe oublié ? » (2.4) et
-// « Continuer avec Google » (2.5, bonus).
+// Story [2.4] Mot de passe oublié : envoie un lien de réinitialisation.
+// "Continuer avec Google" reste bonus en 2.5.
 // =====================================================================
 import 'package:flutter/material.dart';
 
@@ -37,6 +37,7 @@ class _ConnexionPageState extends State<ConnexionPage> {
   bool _enCours = false;
   bool _motDePasseVisible = false;
   String? _erreur;
+  String? _messageInfo;
 
   @override
   void dispose() {
@@ -48,13 +49,41 @@ class _ConnexionPageState extends State<ConnexionPage> {
   Future<void> _connecter() async {
     if (_enCours) return;
     FocusScope.of(context).unfocus();
-    setState(() => _erreur = null);
+    setState(() {
+      _erreur = null;
+      _messageInfo = null;
+    });
     if (!_form.currentState!.validate()) return;
     setState(() => _enCours = true);
     try {
       await widget.auth.connecter(email: _email.text, motDePasse: _motDePasse.text);
       await widget.apresConnexion?.call();
       // Le routeur affiche l'accueil tout seul (il écoute AuthRepository).
+    } on ConnexionException catch (e) {
+      if (mounted) setState(() => _erreur = e.message);
+    } finally {
+      if (mounted) setState(() => _enCours = false);
+    }
+  }
+
+  Future<void> _reinitialiserMotDePasse() async {
+    if (_enCours) return;
+    final email = _email.text.trim();
+    if (email.isEmpty || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$').hasMatch(email)) {
+      setState(() => _erreur = 'Saisissez une adresse email valide pour recevoir le lien.');
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _enCours = true;
+      _erreur = null;
+      _messageInfo = null;
+    });
+    try {
+      await widget.auth.reinitialiserMotDePasse(email: email);
+      if (mounted) {
+        setState(() => _messageInfo = 'Un lien de réinitialisation a été envoyé à $email.');
+      }
     } on ConnexionException catch (e) {
       if (mounted) setState(() => _erreur = e.message);
     } finally {
@@ -82,6 +111,28 @@ class _ConnexionPageState extends State<ConnexionPage> {
             const SizedBox(height: 28),
             if (_erreur != null) ...[
               BandeauErreur(message: _erreur!),
+              const SizedBox(height: 18),
+            ],
+            if (_messageInfo != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: DarColors.successSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_outline, color: DarColors.success),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _messageInfo!,
+                        style: const TextStyle(color: DarColors.success, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 18),
             ],
             TextFormField(
@@ -117,7 +168,14 @@ class _ConnexionPageState extends State<ConnexionPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 28),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _enCours ? null : _reinitialiserMotDePasse,
+                child: const Text('Mot de passe oublié ?'),
+              ),
+            ),
+            const SizedBox(height: 8),
             DecoratedBox(
               // Ombre bleutée du bouton principal (shadow: 'md' de la maquette)
               decoration: BoxDecoration(

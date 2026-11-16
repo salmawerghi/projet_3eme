@@ -39,8 +39,16 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="com.darimmo" android:host="connexion"/>
             </intent-filter>
-            <!-- Le lien est lu par supabase_flutter (app_links), pas par go_router. -->
-            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
+            <!-- [2.4] Le lien de réinitialisation du mot de passe ouvre directement
+                 l'écran de changement de mot de passe. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.darimmo" android:host="reset-password"/>
+            </intent-filter>
+            <!-- Le lien est lu par app_links et redirigé vers la page adéquate. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="true"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

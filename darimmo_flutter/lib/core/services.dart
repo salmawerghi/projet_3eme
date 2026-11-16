@@ -14,6 +14,7 @@ import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/chat_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/notifications/data/push_service.dart';
+import 'package:darimmo/features/profile/data/repositories/profil_repository.dart';
 import 'package:darimmo/features/publish/data/repositories/annonce_repository.dart';
 import 'package:darimmo/features/publish/data/repositories/mes_annonces_repository.dart';
 import 'package:darimmo/features/publish/data/repositories/photos_repository.dart';
@@ -25,6 +26,7 @@ import 'package:darimmo/core/location/localisation.dart';
 class Services {
   Services({
     required this.auth,
+    required this.profil,
     required this.recherche,
     required this.annonces,
     required this.photos,
@@ -40,19 +42,21 @@ class Services {
 
   /// Version réelle : tout passe par Supabase.
   factory Services.supabase(SupabaseClient client) => Services(
-        auth: SupabaseAuthRepository(client),
-        recherche: SupabaseRechercheRepository(client),
-        annonces: SupabaseAnnonceRepository(client),
-        photos: SupabasePhotosRepository(client),
-        mesAnnonces: SupabaseMesAnnoncesRepository(client),
-        conversations: SupabaseConversationsRepository(client),
-        chat: SupabaseChatRepository(client),
-        geocodage: NominatimGeocodage(),
-        localisation: const GeolocatorLocalisation(),
-      );
+    auth: SupabaseAuthRepository(client),
+    profil: SupabaseProfilRepository(client),
+    recherche: SupabaseRechercheRepository(client),
+    annonces: SupabaseAnnonceRepository(client),
+    photos: SupabasePhotosRepository(client),
+    mesAnnonces: SupabaseMesAnnoncesRepository(client),
+    conversations: SupabaseConversationsRepository(client),
+    chat: SupabaseChatRepository(client),
+    geocodage: NominatimGeocodage(),
+    localisation: const GeolocatorLocalisation(),
+  );
 
   // ----- Membre A
   final AuthRepository auth;
+  final ProfilRepository profil;
 
   // ----- Membre B
   final RechercheRepository recherche;

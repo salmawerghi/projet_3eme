@@ -25,7 +25,10 @@ class ConnexionException implements Exception {
 enum ChampInscription { email, motDePasse, general }
 
 class InscriptionException implements Exception {
-  const InscriptionException(this.message, {this.champ = ChampInscription.general});
+  const InscriptionException(
+    this.message, {
+    this.champ = ChampInscription.general,
+  });
   final String message;
   final ChampInscription champ;
   @override
@@ -46,7 +49,8 @@ enum ResultatInscription {
 /// URL Configuration > Redirect URLs, sinon Supabase renvoie vers le Site URL.
 const lienRetourConfirmation = 'com.darimmo://connexion';
 
-const messageEmailDejaUtilise ='Cet email est déjà utilisé. Connectez-vous ou choisissez une autre adresse.';
+const messageEmailDejaUtilise =
+    'Cet email est déjà utilisé. Connectez-vous ou choisissez une autre adresse.';
 
 /// ChangeNotifier : prévient le routeur à chaque connexion / déconnexion.
 abstract class AuthRepository extends ChangeNotifier {
@@ -66,13 +70,21 @@ abstract class AuthRepository extends ChangeNotifier {
     String? telephone,
   });
 
+  /// [2.4] Envoie un lien de réinitialisation du mot de passe.
+  Future<void> reinitialiserMotDePasse({required String email});
+
+  /// [2.4] Met à jour le mot de passe après le clic sur le lien reçu par email.
+  Future<void> changerMotDePasse({required String nouveauMotDePasse});
+
   /// Renvoie l'email de confirmation de l'inscription.
   Future<void> renvoyerConfirmation(String email);
 }
 
 class SupabaseAuthRepository extends AuthRepository {
   SupabaseAuthRepository(this._client) {
-    _abonnement = _client.auth.onAuthStateChange.listen((_) => notifyListeners());
+    _abonnement = _client.auth.onAuthStateChange.listen(
+      (_) => notifyListeners(),
+    );
   }
 
   final SupabaseClient _client;
@@ -86,17 +98,30 @@ class SupabaseAuthRepository extends AuthRepository {
   String? get email => _client.auth.currentUser?.email;
 
   @override
-  Future<void> connecter({required String email, required String motDePasse}) async {
+  Future<void> connecter({
+    required String email,
+    required String motDePasse,
+  }) async {
     try {
-      await _client.auth.signInWithPassword(email: email.trim(), password: motDePasse);
+      await _client.auth.signInWithPassword(
+        email: email.trim(),
+        password: motDePasse,
+      );
     } on AuthException catch (e) {
       throw ConnexionException(switch (e.code) {
         'invalid_credentials' => 'Email ou mot de passe incorrect.',
         'email_not_confirmed' => 'Adresse email pas encore confirmée : ouvrez le lien reçu par email, puis réessayez.',
+        'rate_limit_exceeded' ||
+        'too_many_requests' ||
+        'over_request_rate_limit' ||
+        'over_email_send_rate_limit' =>
+          'Trop de tentatives. Réessayez dans quelques minutes.',
         _ => e.message,
       });
     } catch (_) {
-      throw const ConnexionException('Connexion impossible. Vérifiez Internet et réessayez.');
+      throw const ConnexionException(
+        'Connexion impossible. Vérifiez Internet et réessayez.',
+      );
     }
   }
 
@@ -121,15 +146,70 @@ class SupabaseAuthRepository extends AuthRepository {
     } on AuthException catch (e) {
       throw _erreurInscription(e);
     } catch (_) {
-      throw const InscriptionException('Inscription impossible. Vérifiez Internet et réessayez.');
+      throw const InscriptionException(
+        'Inscription impossible. Vérifiez Internet et réessayez.',
+      );
     }
     // Email déjà inscrit : par sécurité Supabase ne renvoie pas d'erreur
     // mais un faux compte sans identité (rien n'est créé en base).
     final identites = reponse.user?.identities;
     if (reponse.user == null || (identites != null && identites.isEmpty)) {
-      throw const InscriptionException(messageEmailDejaUtilise, champ: ChampInscription.email);
+      throw const InscriptionException(
+        messageEmailDejaUtilise,
+        champ: ChampInscription.email,
+      );
     }
-    return reponse.session != null ? ResultatInscription.connecte : ResultatInscription.confirmationEmail;
+    return reponse.session != null
+        ? ResultatInscription.connecte
+        : ResultatInscription.confirmationEmail;
+  }
+
+  @override
+  Future<void> reinitialiserMotDePasse({required String email}) async {
+    try {
+      await _client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: kIsWeb
+            ? Uri.base.resolve('/reset-password').toString()
+            : 'com.darimmo://reset-password',
+      );
+    } on AuthException catch (e) {
+      throw ConnexionException(switch (e.code) {
+        'user_not_found' => 'Aucun compte trouvé pour cette adresse.',
+        'email_address_invalid' => 'Adresse email invalide.',
+        'rate_limit_exceeded' ||
+        'too_many_requests' ||
+        'over_request_rate_limit' ||
+        'over_email_send_rate_limit' =>
+          'Trop de tentatives. Réessayez dans quelques minutes.',
+        _ => e.message,
+      });
+    } catch (_) {
+      throw const ConnexionException(
+        'Impossible d’envoyer le lien. Vérifiez Internet et réessayez.',
+      );
+    }
+  }
+
+  @override
+  Future<void> changerMotDePasse({required String nouveauMotDePasse}) async {
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(password: nouveauMotDePasse),
+      );
+    } on AuthException catch (e) {
+      throw ConnexionException(switch (e.code) {
+        'weak_password' =>
+          'Le mot de passe est trop faible. Utilisez au moins 8 caractères.',
+        'user_not_found' => 'Aucun compte actif trouvé pour cette session.',
+        _ when e.message.toLowerCase().contains('auth session missing') => 'Le lien de réinitialisation est invalide ou expiré. Demandez un nouveau lien et ouvrez le dernier email reçu.',
+        _ => e.message,
+      });
+    } catch (_) {
+      throw const ConnexionException(
+        'Impossible de mettre à jour le mot de passe. Réessayez.',
+      );
+    }
   }
 
   @override
@@ -143,23 +223,36 @@ class SupabaseAuthRepository extends AuthRepository {
     } on AuthException catch (e) {
       throw _erreurInscription(e);
     } catch (_) {
-      throw const InscriptionException('Envoi impossible. Vérifiez Internet et réessayez.');
+      throw const InscriptionException(
+        'Envoi impossible. Vérifiez Internet et réessayez.',
+      );
     }
   }
 
-  static InscriptionException _erreurInscription(AuthException e) => switch (e.code) {
-        'user_already_exists' || 'email_exists' =>
-          const InscriptionException(messageEmailDejaUtilise, champ: ChampInscription.email),
-        'email_address_invalid' =>
-          const InscriptionException('Adresse email refusée. Vérifiez-la.', champ: ChampInscription.email),
+  static InscriptionException _erreurInscription(AuthException e) =>
+      switch (e.code) {
+        'user_already_exists' || 'email_exists' => const InscriptionException(
+          messageEmailDejaUtilise,
+          champ: ChampInscription.email,
+        ),
+        'email_address_invalid' => const InscriptionException(
+          'Adresse email refusée. Vérifiez-la.',
+          champ: ChampInscription.email,
+        ),
         'weak_password' => const InscriptionException(
-            'Mot de passe trop faible : mélangez lettres, chiffres et symboles.',
-            champ: ChampInscription.motDePasse),
-        'over_email_send_rate_limit' || 'over_request_rate_limit' =>
-          const InscriptionException('Trop de tentatives. Réessayez dans quelques minutes.'),
+          'Mot de passe trop faible : mélangez lettres, chiffres et symboles.',
+          champ: ChampInscription.motDePasse,
+        ),
+        'over_email_send_rate_limit' ||
+        'over_request_rate_limit' => const InscriptionException(
+          'Trop de tentatives. Réessayez dans quelques minutes.',
+        ),
         'email_address_not_authorized' => const InscriptionException(
-            'Le serveur ne peut pas encore envoyer d’email à cette adresse (envoi d’emails non configuré).'),
-        'signup_disabled' => const InscriptionException('Les inscriptions sont fermées pour le moment.'),
+          'Le serveur ne peut pas encore envoyer d’email à cette adresse (envoi d’emails non configuré).',
+        ),
+        'signup_disabled' => const InscriptionException(
+          'Les inscriptions sont fermées pour le moment.',
+        ),
         _ => InscriptionException(e.message),
       };
 

@@ -29,6 +29,7 @@ import 'package:darimmo/features/admin/presentation/screens/admin_page.dart';
 import 'package:darimmo/features/auth/presentation/screens/bienvenue_page.dart';
 import 'package:darimmo/features/auth/presentation/screens/connexion_page.dart';
 import 'package:darimmo/features/auth/presentation/screens/inscription_page.dart';
+import 'package:darimmo/features/auth/presentation/screens/nouveau_mot_de_passe_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/conversations_page.dart';
 import 'package:darimmo/features/chat/presentation/screens/discussion_page.dart';
 import 'package:darimmo/features/chat/presentation/widgets/bouton_contacter.dart';
@@ -39,14 +40,21 @@ import 'package:darimmo/features/profile/presentation/screens/profil_page.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
 import 'package:darimmo/features/publish/presentation/screens/mes_annonces_page.dart';
 import 'package:darimmo/features/publish/presentation/screens/publier_annonce_page.dart';
-import 'package:darimmo/features/search/presentation/screens/accueil_page.dart' show AccueilPage;
+import 'package:darimmo/features/search/presentation/screens/accueil_page.dart'
+    show AccueilPage;
 
 /// Pages qu'un visiteur sans compte peut voir (3.1 « En tant que visiteur… »).
 /// La RLS autorise le rôle anon à lire les annonces publiées.
-bool pageVisiteur(String lieu) => lieu == '/accueil' || lieu == '/carte' || lieu.startsWith('/annonces/');
+bool pageVisiteur(String lieu) =>
+    lieu == '/accueil' || lieu == '/carte' || lieu.startsWith('/annonces/');
 
-GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, String? initiale}) {
-  PublierAnnoncePage formulaire({EditionAnnonce? edition}) => PublierAnnoncePage(
+GoRouter creerRouteur(
+  Services s, {
+  GlobalKey<NavigatorState>? cleNavigateur,
+  String? initiale,
+}) {
+  PublierAnnoncePage formulaire({EditionAnnonce? edition}) =>
+      PublierAnnoncePage(
         repository: s.annonces,
         photosRepository: s.photos,
         choisirPhotos: s.choisirPhotos,
@@ -59,13 +67,19 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
   return GoRouter(
     navigatorKey: cleNavigateur,
     // Au lancement : accueil si la session est conservée (2.2), sinon bienvenue (A1).
-    initialLocation: initiale ?? (s.auth.estConnecte ? '/accueil' : '/bienvenue'),
+    initialLocation:
+        initiale ?? (s.auth.estConnecte ? '/accueil' : '/bienvenue'),
     refreshListenable: s.auth, // connexion / déconnexion -> redirect recalculé
     redirect: (context, etat) {
       final lieu = etat.matchedLocation;
-      final pageCompte = lieu.startsWith('/bienvenue'); // bienvenue, connexion, inscription
+      final pageCompte = lieu.startsWith(
+        '/bienvenue',
+      ); // bienvenue, connexion, inscription
+      final pageReset =
+          lieu == '/reset-password' ||
+          lieu == '/bienvenue/reinitialiser-mot-de-passe';
       if (s.auth.estConnecte) return pageCompte ? '/accueil' : null;
-      if (pageCompte || pageVisiteur(lieu)) return null;
+      if (pageCompte || pageReset || pageVisiteur(lieu)) return null;
       return '/bienvenue'; // favoris, messages, profil, publier… demandent un compte
     },
     routes: [
@@ -87,7 +101,8 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
               auth: s.auth,
               emailInitial: etat.extra as String?,
               apresConnexion: () async => s.push?.enregistrer(),
-              onCreerCompte: (context) => context.push('/bienvenue/inscription'),
+              onCreerCompte: (context) =>
+                  context.push('/bienvenue/inscription'),
             ),
           ),
           GoRoute(
@@ -95,8 +110,13 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
             builder: (_, _) => InscriptionPage(
               auth: s.auth,
               apresConnexion: () async => s.push?.enregistrer(),
-              onSeConnecter: (context, email) => context.go('/bienvenue/connexion', extra: email),
+              onSeConnecter: (context, email) =>
+                  context.go('/bienvenue/connexion', extra: email),
             ),
+          ),
+          GoRoute(
+            path: 'reinitialiser-mot-de-passe',
+            builder: (_, _) => NouveauMotDePassePage(auth: s.auth),
           ),
         ],
       ),
@@ -105,44 +125,65 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => NavigationPrincipale(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/accueil',
-              builder: (_, _) => AccueilPage(
-                repository: s.recherche,
-                onOuvrir: (context, a) => context.push('/annonces/${a.id}'),
-                onVoirCarte: (context) => context.push('/carte'),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/accueil',
+                builder: (_, _) => AccueilPage(
+                  repository: s.recherche,
+                  onOuvrir: (context, a) => context.push('/annonces/${a.id}'),
+                  onVoirCarte: (context) => context.push('/carte'),
+                ),
               ),
-            ),
-          ]),
-          StatefulShellBranch(routes: [GoRoute(path: '/favoris', builder: (_, _) => const FavorisPage())]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/messages',
-              builder: (_, _) => ConversationsPage(
-                repository: s.conversations,
-                onOuvrir: (context, c) => context.push('/messages/${c.id}', extra: c.nomAffiche),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/favoris', builder: (_, _) => const FavorisPage()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/messages',
+                builder: (_, _) => ConversationsPage(
+                  repository: s.conversations,
+                  onOuvrir: (context, c) =>
+                      context.push('/messages/${c.id}', extra: c.nomAffiche),
+                ),
               ),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/profil',
-              builder: (_, _) => ProfilPage(email: s.auth.email, onDeconnexion: s.deconnecter),
-            ),
-          ]),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profil',
+                builder: (_, _) => ProfilPage(
+                  email: s.auth.email,
+                  repository: s.profil,
+                  choisirPhotos: s.choisirPhotos,
+                  onDeconnexion: s.deconnecter,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
 
       // ----- Écrans plein écran (par-dessus les onglets)
       GoRoute(
+        path: '/reset-password',
+        builder: (_, _) => NouveauMotDePassePage(auth: s.auth),
+      ),
+      GoRoute(
         path: '/messages/:id',
         builder: (_, etat) => DiscussionPage(
-              repository: s.chat,
-              idConversation: etat.pathParameters['id']!,
-              titre: etat.extra as String?,
-              onVoirAnnonce: (context, idAnnonce) => context.push('/annonces/$idAnnonce'),
-            ),
+          repository: s.chat,
+          idConversation: etat.pathParameters['id']!,
+          titre: etat.extra as String?,
+          onVoirAnnonce: (context, idAnnonce) =>
+              context.push('/annonces/$idAnnonce'),
+        ),
       ),
       GoRoute(
         path: '/annonces/:id',
@@ -170,7 +211,8 @@ GoRouter creerRouteur(Services s, {GlobalKey<NavigatorState>? cleNavigateur, Str
         builder: (_, _) => MesAnnoncesPage(
           repository: s.mesAnnonces,
           onPublier: (context) => context.push('/publier'),
-          onModifier: (context, edition) => context.push<Annonce>('/mes-annonces/modifier', extra: edition),
+          onModifier: (context, edition) =>
+              context.push<Annonce>('/mes-annonces/modifier', extra: edition),
         ),
       ),
       GoRoute(

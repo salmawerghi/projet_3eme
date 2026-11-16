@@ -16,6 +16,7 @@ class FauxAuth extends AuthRepository {
 
   /// Dernière inscription reçue (pour vérifier ce qui est envoyé).
   Map<String, String?>? derniereInscription;
+  String? emailDemande;
   int renvois = 0;
 
   /// Erreur à lever à la prochaine inscription (ex : pas d'Internet).
@@ -69,6 +70,14 @@ class FauxAuth extends AuthRepository {
     notifyListeners();
     return ResultatInscription.connecte;
   }
+
+  @override
+  Future<void> reinitialiserMotDePasse({required String email}) async {
+    emailDemande = email;
+  }
+
+  @override
+  Future<void> changerMotDePasse({required String nouveauMotDePasse}) async {}
 
   @override
   Future<void> renvoyerConfirmation(String email) async => renvois++;
