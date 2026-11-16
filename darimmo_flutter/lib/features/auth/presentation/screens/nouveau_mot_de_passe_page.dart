@@ -1,3 +1,9 @@
+// =====================================================================
+// DarImmo - [2.4] Nouveau mot de passe (membre A)
+// Ouvert par le lien reçu par email (com.darimmo://reset-password) :
+// supabase_flutter ouvre une session de récupération, puis on enregistre
+// le nouveau mot de passe. Ensuite « Continuer » mène à l'accueil.
+// =====================================================================
 import 'package:flutter/material.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
@@ -6,9 +12,13 @@ import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/auth/presentation/validators_auth.dart';
 
 class NouveauMotDePassePage extends StatefulWidget {
-  const NouveauMotDePassePage({super.key, required this.auth});
+  const NouveauMotDePassePage({super.key, required this.auth, this.onTermine});
 
   final AuthRepository auth;
+
+  /// Après la réussite : sinon l'écran, ouvert seul par le lien, serait une
+  /// impasse (rien en dessous dans la pile de navigation).
+  final void Function(BuildContext context)? onTermine;
 
   @override
   State<NouveauMotDePassePage> createState() => _NouveauMotDePassePageState();
@@ -43,7 +53,9 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
 
     setState(() => _enCours = true);
     try {
-      await widget.auth.changerMotDePasse(nouveauMotDePasse: _nouveauMotDePasse.text);
+      await widget.auth.changerMotDePasse(
+        nouveauMotDePasse: _nouveauMotDePasse.text,
+      );
       if (mounted) {
         setState(() => _confirmation = 'Votre mot de passe a été mis à jour.');
       }
@@ -56,7 +68,9 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
 
   String? _validerConfirmation(String? value) {
     if ((value ?? '').isEmpty) return 'Confirmez votre nouveau mot de passe';
-    if (value != _nouveauMotDePasse.text) return 'Les mots de passe ne correspondent pas';
+    if (value != _nouveauMotDePasse.text) {
+      return 'Les mots de passe ne correspondent pas';
+    }
     return null;
   }
 
@@ -72,12 +86,20 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
             children: [
               const Text(
                 'Choisissez un nouveau mot de passe',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: DarColors.text),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: DarColors.text,
+                ),
               ),
               const SizedBox(height: 10),
               const Text(
                 'Utilisez au moins 8 caractères pour sécuriser votre compte.',
-                style: TextStyle(fontSize: 15, height: 1.45, color: DarColors.text2),
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: DarColors.text2,
+                ),
               ),
               const SizedBox(height: 24),
               if (_erreur != null) ...[
@@ -93,12 +115,18 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, color: DarColors.success),
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: DarColors.success,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _confirmation!,
-                          style: const TextStyle(color: DarColors.success, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            color: DarColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -115,8 +143,14 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
                   labelText: 'Nouveau mot de passe',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    onPressed: () => setState(() => _motDePasseVisible = !_motDePasseVisible),
-                    icon: Icon(_motDePasseVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    onPressed: () => setState(
+                      () => _motDePasseVisible = !_motDePasseVisible,
+                    ),
+                    icon: Icon(
+                      _motDePasseVisible
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
                   ),
                 ),
               ),
@@ -130,25 +164,43 @@ class _NouveauMotDePassePageState extends State<NouveauMotDePassePage> {
                   labelText: 'Confirmer le nouveau mot de passe',
                   prefixIcon: const Icon(Icons.lock_reset),
                   suffixIcon: IconButton(
-                    onPressed: () => setState(() => _confirmationVisible = !_confirmationVisible),
-                    icon: Icon(_confirmationVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                    onPressed: () => setState(
+                      () => _confirmationVisible = !_confirmationVisible,
+                    ),
+                    icon: Icon(
+                      _confirmationVisible
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 28),
-              FilledButton(
-                onPressed: _enCours ? null : _enregistrer,
-                child: _enCours
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white)),
-                          SizedBox(width: 12),
-                          Text('Enregistrement…'),
-                        ],
-                      )
-                    : const Text('Enregistrer le nouveau mot de passe'),
-              ),
+              if (_confirmation != null && widget.onTermine != null)
+                FilledButton(
+                  onPressed: () => widget.onTermine!(context),
+                  child: const Text('Continuer'),
+                )
+              else
+                FilledButton(
+                  onPressed: _enCours ? null : _enregistrer,
+                  child: _enCours
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Enregistrement…'),
+                          ],
+                        )
+                      : const Text('Enregistrer le nouveau mot de passe'),
+                ),
             ],
           ),
         ),

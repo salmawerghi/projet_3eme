@@ -27,10 +27,12 @@ Future<void> _messageEnArrierePlan(RemoteMessage message) async {
 
 String? _routeDepuisLien(Uri? uri) {
   if (uri == null) return null;
-  if (uri.host == 'reset-password' || uri.path == '/reset-password')
+  if (uri.host == 'reset-password' || uri.path == '/reset-password') {
     return '/reset-password';
-  if (uri.host == 'connexion' || uri.path == '/connexion')
+  }
+  if (uri.host == 'connexion' || uri.path == '/connexion') {
     return '/bienvenue/connexion';
+  }
   return null;
 }
 
@@ -95,8 +97,9 @@ Future<void> main() async {
         ouvrir: routeur.push,
         messager: cleMessager,
       );
-      if (services.auth.estConnecte)
+      if (services.auth.estConnecte) {
         services.push!.enregistrer(); // session déjà ouverte
+      }
     } catch (e) {
       debugPrint('Firebase non configuré : notifications désactivées ($e)');
     }

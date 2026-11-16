@@ -77,8 +77,9 @@ class _ProfilPageState extends State<ProfilPage> {
         _confirmation = null;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _erreur = 'Impossible d’ouvrir la galerie. Réessayez.');
+      }
     }
   }
 

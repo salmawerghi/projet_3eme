@@ -47,8 +47,10 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="com.darimmo" android:host="reset-password"/>
             </intent-filter>
-            <!-- Le lien est lu par app_links et redirigé vers la page adéquate. -->
-            <meta-data android:name="flutter_deeplinking_enabled" android:value="true"/>
+            <!-- Les liens com.darimmo:// sont lus par app_links (supabase_flutter
+                 pour la session, main.dart pour la page), PAS par go_router :
+                 avec true, go_router recevrait aussi ces liens sans chemin. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

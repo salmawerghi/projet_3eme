@@ -49,8 +49,9 @@ class SupabaseProfilRepository implements ProfilRepository {
   @override
   Future<DonneesProfil> charger() => _executer(() async {
     final utilisateur = _client.auth.currentUser;
-    if (utilisateur == null)
+    if (utilisateur == null) {
       throw const ProfilException('Session expirée : reconnectez-vous.');
+    }
 
     final ligne = await _client
         .from('profiles')
@@ -67,8 +68,9 @@ class SupabaseProfilRepository implements ProfilRepository {
     PhotoChoisie? photo,
   }) => _executer(() async {
     final utilisateur = _client.auth.currentUser;
-    if (utilisateur == null)
+    if (utilisateur == null) {
       throw const ProfilException('Session expirée : reconnectez-vous.');
+    }
 
     final valeurs = <String, dynamic>{
       'nom': nom.trim(),

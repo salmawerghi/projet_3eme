@@ -75,9 +75,8 @@ GoRouter creerRouteur(
       final pageCompte = lieu.startsWith(
         '/bienvenue',
       ); // bienvenue, connexion, inscription
-      final pageReset =
-          lieu == '/reset-password' ||
-          lieu == '/bienvenue/reinitialiser-mot-de-passe';
+      // [2.4] page ouverte par le lien de l'email (session de récupération)
+      final pageReset = lieu == '/reset-password';
       if (s.auth.estConnecte) return pageCompte ? '/accueil' : null;
       if (pageCompte || pageReset || pageVisiteur(lieu)) return null;
       return '/bienvenue'; // favoris, messages, profil, publier… demandent un compte
@@ -113,10 +112,6 @@ GoRouter creerRouteur(
               onSeConnecter: (context, email) =>
                   context.go('/bienvenue/connexion', extra: email),
             ),
-          ),
-          GoRoute(
-            path: 'reinitialiser-mot-de-passe',
-            builder: (_, _) => NouveauMotDePassePage(auth: s.auth),
           ),
         ],
       ),
@@ -173,7 +168,10 @@ GoRouter creerRouteur(
       // ----- Écrans plein écran (par-dessus les onglets)
       GoRoute(
         path: '/reset-password',
-        builder: (_, _) => NouveauMotDePassePage(auth: s.auth),
+        builder: (_, _) => NouveauMotDePassePage(
+          auth: s.auth,
+          onTermine: (context) => context.go('/accueil'),
+        ),
       ),
       GoRoute(
         path: '/messages/:id',

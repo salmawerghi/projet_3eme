@@ -62,4 +62,33 @@ void main() {
     expect(auth.nouveauMotDePasse, 'NouveauMotDePasse123!');
     expect(find.text('Votre mot de passe a été mis à jour.'), findsOneWidget);
   });
+
+  testWidgets('après la réussite, « Continuer » quitte l’écran (pas d’impasse)', (tester) async {
+    final auth = FakeAuthPasswordUpdate();
+    var termine = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: NouveauMotDePassePage(auth: auth, onTermine: (_) => termine++),
+    ));
+    expect(find.text('Continuer'), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nouveau mot de passe'), 'NouveauMotDePasse123!');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirmer le nouveau mot de passe'), 'NouveauMotDePasse123!');
+    await tester.tap(find.widgetWithText(FilledButton, 'Enregistrer le nouveau mot de passe'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enregistrer le nouveau mot de passe'), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuer'));
+    expect(termine, 1);
+  });
+
+  testWidgets('les deux mots de passe différents : refusé, rien n’est envoyé', (tester) async {
+    final auth = FakeAuthPasswordUpdate();
+    await tester.pumpWidget(MaterialApp(home: NouveauMotDePassePage(auth: auth)));
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nouveau mot de passe'), 'NouveauMotDePasse123!');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirmer le nouveau mot de passe'), 'Autre123!');
+    await tester.tap(find.widgetWithText(FilledButton, 'Enregistrer le nouveau mot de passe'));
+    await tester.pumpAndSettle();
+    expect(find.text('Les mots de passe ne correspondent pas'), findsOneWidget);
+    expect(auth.aChangePassword, isFalse);
+  });
 }
