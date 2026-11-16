@@ -19,6 +19,7 @@ import '../features/auth/faux_auth.dart';
 import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
+import '../features/detail/faux_detail.dart';
 import '../features/search/fausse_recherche.dart';
 
 class FauxAnnonces implements AnnonceRepository {
@@ -81,13 +82,14 @@ class FauxProfilRepository implements ProfilRepository {
   }) async => DonneesProfil(nom: nom, telephone: telephone);
 }
 
-Services fauxServices(FauxAuth auth, {FaussesConversations? conversations}) =>
+Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxDetail? detail}) =>
     Services(
       auth: auth,
       profil: FauxProfilRepository(),
       recherche: FausseRecherche([
         annonceTest(1, titre: 'Appartement S+2 lumineux'),
       ]),
+      detail: detail ?? FauxDetail(),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
@@ -104,12 +106,13 @@ Future<FauxAuth> demarrer(
   bool connecte = true,
   String? initiale,
   FaussesConversations? conversations,
+  FauxDetail? detail,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final auth = FauxAuth(connecte: connecte);
-  final routeur = creerRouteur(fauxServices(auth, conversations: conversations), initiale: initiale);
+  final routeur = creerRouteur(fauxServices(auth, conversations: conversations, detail: detail), initiale: initiale);
   addTearDown(routeur.dispose);
   await tester.pumpWidget(DarImmoApp(routeur: routeur));
   await tester.pumpAndSettle();
@@ -318,10 +321,12 @@ void main() {
     );
   });
 
-  testWidgets('route du détail d’une annonce (3.3, membre B)', (tester) async {
-    await demarrer(tester, initiale: '/annonces/abc-123');
-    expect(find.widgetWithText(AppBar, 'Détail de l’annonce'), findsOneWidget);
-    expect(find.text('id = abc-123'), findsOneWidget);
+  testWidgets('route du détail d’une annonce (3.3)', (tester) async {
+    final detail = FauxDetail();
+    await demarrer(tester, initiale: '/annonces/abc-123', detail: detail);
+    expect(detail.appels, 1);
+    expect(find.text('Appartement S+2 lumineux'), findsOneWidget);
+    expect(find.text('Bientôt disponible'), findsNothing);
   });
 
   testWidgets('route de reset password : écran de changement du mot de passe', (

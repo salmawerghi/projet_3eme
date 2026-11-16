@@ -13,6 +13,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/chat_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
+import 'package:darimmo/features/detail/data/repositories/detail_repository.dart';
 import 'package:darimmo/features/notifications/data/push_service.dart';
 import 'package:darimmo/features/profile/data/repositories/profil_repository.dart';
 import 'package:darimmo/features/publish/data/repositories/annonce_repository.dart';
@@ -28,6 +29,7 @@ class Services {
     required this.auth,
     required this.profil,
     required this.recherche,
+    required this.detail,
     required this.annonces,
     required this.photos,
     required this.mesAnnonces,
@@ -45,6 +47,7 @@ class Services {
     auth: SupabaseAuthRepository(client),
     profil: SupabaseProfilRepository(client),
     recherche: SupabaseRechercheRepository(client),
+    detail: SupabaseDetailRepository(client),
     annonces: SupabaseAnnonceRepository(client),
     photos: SupabasePhotosRepository(client),
     mesAnnonces: SupabaseMesAnnoncesRepository(client),
@@ -60,6 +63,7 @@ class Services {
 
   // ----- Membre B
   final RechercheRepository recherche;
+  final DetailRepository detail; // [3.3] fait par C
 
   // ----- Membre C
   final AnnonceRepository annonces;

@@ -13,7 +13,7 @@
 //   /messages     (onglet)          C  7.3
 //   /profil       (onglet)          A  2.3
 //   /messages/:id                   C  7.2 discussion
-//   /annonces/:id                   B  3.3 détail (bouton Contacter : C 7.1)
+//   /annonces/:id                   B  3.3 détail (fait par C) + bouton Contacter (C 7.1)
 //   /carte                          B  4.1 / 4.2
 //   /publier                        C  6.1 + 6.2 + 6.4
 //   /mes-annonces                   C  6.3 / 6.5
@@ -189,6 +189,9 @@ GoRouter creerRouteur(
           final id = etat.pathParameters['id']!;
           return DetailAnnoncePage(
             idAnnonce: id,
+            repository: s.detail,
+            afficherTuilesCarte: s.afficherTuilesCarte,
+            onQuitter: (context) => context.go('/accueil'),
             // [7.1] membre C : B place ce bouton dans son écran 3.3.
             boutonContacter: (idAnnonceur) => BoutonContacter(
               idAnnonce: id,
