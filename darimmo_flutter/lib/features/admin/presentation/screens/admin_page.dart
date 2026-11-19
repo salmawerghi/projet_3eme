@@ -7,18 +7,19 @@
 // [9.2] Onglet « En attente » : valider, ou rejeter avec motif obligatoire.
 //       L'annonceur est notifié par la base (8.2, send-push).
 // [9.4] Onglet « Signalements » : masquer l'annonce ou classer sans suite.
-// [9.3] Onglet « Comptes » : à venir.
+// [9.3] Onglet « Comptes » : rechercher un utilisateur, le bloquer ou le débloquer.
 // =====================================================================
 import 'package:flutter/material.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
-import 'package:darimmo/core/widgets/bientot_disponible.dart';
 import 'package:darimmo/features/admin/data/repositories/moderation_repository.dart';
 import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
+import 'package:darimmo/features/admin/presentation/viewmodels/comptes_view_model.dart';
 import 'package:darimmo/features/admin/presentation/viewmodels/moderation_view_model.dart';
 import 'package:darimmo/features/admin/presentation/viewmodels/signalements_view_model.dart';
 import 'package:darimmo/features/admin/presentation/widgets/carte_moderation.dart';
 import 'package:darimmo/features/admin/presentation/widgets/carte_signalement.dart';
+import 'package:darimmo/features/admin/presentation/widgets/onglet_comptes.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({
@@ -41,11 +42,13 @@ class AdminPage extends StatefulWidget {
 class _AdminPageState extends State<AdminPage> {
   late final _vm = ModerationViewModel(widget.moderation)..charger();
   late final _signalements = SignalementsViewModel(widget.moderation)..charger();
+  late final _comptes = ComptesViewModel(widget.moderation)..charger();
 
   @override
   void dispose() {
     _vm.dispose();
     _signalements.dispose();
+    _comptes.dispose();
     super.dispose();
   }
 
@@ -115,13 +118,7 @@ class _AdminPageState extends State<AdminPage> {
         body: TabBarView(children: [
           ListenableBuilder(listenable: _vm, builder: (context, _) => _enAttente()),
           ListenableBuilder(listenable: _signalements, builder: (context, _) => _listeSignalements()),
-          const BientotDisponible(
-            titre: 'Comptes',
-            stories: '9.3 Bloquer ou débloquer un compte',
-            responsable: 'Membre A',
-            icone: Icons.person_off_outlined,
-            avecAppBar: false,
-          ),
+          OngletComptes(vm: _comptes),
         ]),
       ),
     );

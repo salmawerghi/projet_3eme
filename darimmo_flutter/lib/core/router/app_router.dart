@@ -23,6 +23,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:darimmo/app.dart' show cleMessager;
 import 'package:darimmo/core/router/navigation_principale.dart';
 import 'package:darimmo/core/services.dart';
 import 'package:darimmo/features/admin/presentation/screens/admin_page.dart';
@@ -75,6 +76,27 @@ GoRouter creerRouteur(
         onSeConnecter: (context) => context.go('/bienvenue/connexion'),
         onCreerCompte: (context) => context.go('/bienvenue/inscription'),
       );
+
+  // [9.3] Compte bloqué par un administrateur : déconnecté dès que l'appli
+  // le voit (à la connexion ou à l'ouverture), avec un message.
+  void siCompteBloque() {
+    if (!s.etatCompte.estBloque || !s.auth.estConnecte) return;
+    s.deconnecter();
+    void afficher() => cleMessager.currentState
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        duration: Duration(seconds: 8),
+        content: Text('Votre compte a été suspendu par un administrateur. Contactez le support DarImmo.'),
+      ));
+    // Au démarrage, l'écran n'est peut-être pas encore affiché : on attend la première image.
+    if (cleMessager.currentState == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => afficher());
+    } else {
+      afficher();
+    }
+  }
+
+  s.etatCompte.addListener(siCompteBloque);
 
   return GoRouter(
     navigatorKey: cleNavigateur,

@@ -1,6 +1,6 @@
 // =====================================================================
-// DarImmo - [9.2] [9.4] ModerationRepository : valider ou rejeter une
-// annonce ; traiter les signalements.
+// DarImmo - [9.2] [9.3] [9.4] ModerationRepository : valider ou rejeter
+// une annonce ; bloquer un compte ; traiter les signalements.
 // Tâches du membre A, réalisées par le membre C.
 //
 // Sécurité dans la base (déjà en place) :
@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:darimmo/features/admin/data/models/annonce_a_moderer.dart';
 import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
+import 'package:darimmo/features/admin/data/models/compte_admin.dart';
 
 class ModerationException implements Exception {
   const ModerationException(this.message, {this.dejaTraitee = false});
@@ -47,6 +48,15 @@ abstract class ModerationRepository {
 
   /// [9.4] Classe les signalements sans suite (statut classe) ; l'annonce reste en ligne.
   Future<void> classer(List<int> idsSignalements);
+
+  /// [9.3] Comptes dont le nom ou l'email contient [recherche] ;
+  /// sans recherche : les comptes bloqués.
+  Future<List<CompteAdmin>> comptes(String? recherche);
+
+  /// [9.3] Bloque ou débloque un compte (profiles.bloque). La base empêche
+  /// alors le compte de publier et d'écrire (RLS est_bloque()) ; l'appli le
+  /// déconnecte à sa prochaine connexion ou ouverture.
+  Future<void> bloquer(String idCompte, {required bool bloque});
 }
 
 class SupabaseModerationRepository implements ModerationRepository {
@@ -129,4 +139,20 @@ class SupabaseModerationRepository implements ModerationRepository {
 
   @override
   Future<void> classer(List<int> idsSignalements) => _statutSignalements(idsSignalements, 'classe');
+
+  @override
+  Future<List<CompteAdmin>> comptes(String? recherche) => _appel(() async {
+        var requete = _client.from('profiles').select(CompteAdmin.colonnes);
+        // Retire les caractères qui ont un sens dans la syntaxe « or » de PostgREST.
+        final texte = (recherche ?? '').replaceAll(RegExp(r'[,()"*%_\\:]'), ' ').trim();
+        requete = texte.isEmpty ? requete.eq('bloque', true) : requete.or('nom.ilike.*$texte*,email.ilike.*$texte*');
+        final lignes = await requete.order('nom').limit(30);
+        return [for (final l in lignes) CompteAdmin.depuisLigne(l)];
+      });
+
+  @override
+  Future<void> bloquer(String idCompte, {required bool bloque}) => _appel(() async {
+        final modifies = await _client.from('profiles').update({'bloque': bloque}).eq('id', idCompte).select('id');
+        if (modifies.isEmpty) throw const ModerationException('Compte introuvable.');
+      });
 }

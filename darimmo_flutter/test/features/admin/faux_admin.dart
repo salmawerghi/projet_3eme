@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:darimmo/features/admin/data/models/annonce_a_moderer.dart';
 import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
+import 'package:darimmo/features/admin/data/models/compte_admin.dart';
 import 'package:darimmo/features/admin/data/repositories/moderation_repository.dart';
 import 'package:darimmo/features/auth/data/repositories/compte_repository.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
@@ -69,9 +70,18 @@ List<AnnonceSignalee> signalementsTest() => [
       ),
     ];
 
+/// Comptes : un admin, deux utilisateurs dont un déjà bloqué, un compte sans nom.
+List<CompteAdmin> comptesTest() => [
+      const CompteAdmin(id: 'adm', nom: 'Admin DarImmo', email: 'admin@darimmo.test', estAdmin: true, bloque: false),
+      const CompteAdmin(id: 'lina', nom: 'Lina Acheteuse', email: 'acheteur@darimmo.test', estAdmin: false, bloque: false),
+      const CompteAdmin(id: 'sami', nom: 'Sami Vendeur', email: 'vendeur@darimmo.test', estAdmin: false, bloque: true),
+      const CompteAdmin(id: 'ali', nom: '', email: 'ali.test@gmail.com', estAdmin: false, bloque: false),
+    ];
+
 class FausseModeration implements ModerationRepository {
-  FausseModeration([List<AnnonceAModerer>? annonces, List<AnnonceSignalee>? signales])
+  FausseModeration([List<AnnonceAModerer>? annonces, List<AnnonceSignalee>? signales, List<CompteAdmin>? comptes])
       : signales = signales ?? signalementsTest(),
+        comptesEnBase = comptes ?? comptesTest(),
         annonces = annonces ??
             [
               annonceAModerer('m1', titre: 'Appartement s+2', heures: 30),
@@ -80,6 +90,10 @@ class FausseModeration implements ModerationRepository {
 
   final List<AnnonceAModerer> annonces;
   final List<AnnonceSignalee> signales;
+  final List<CompteAdmin> comptesEnBase;
+
+  /// Recherches reçues (null ou '' = comptes bloqués).
+  final recherches = <String?>[];
   final masquees = <String>[];
   final traites = <int>[];
   final classes = <int>[];
@@ -143,5 +157,24 @@ class FausseModeration implements ModerationRepository {
     _verifier();
     signales.removeWhere((a) => a.ids.any(idsSignalements.contains));
     classes.addAll(idsSignalements);
+  }
+
+  @override
+  Future<List<CompteAdmin>> comptes(String? recherche) async {
+    recherches.add(recherche);
+    _verifier();
+    final q = (recherche ?? '').trim().toLowerCase();
+    return [
+      for (final c in comptesEnBase)
+        if (q.isEmpty ? c.bloque : (c.nom.toLowerCase().contains(q) || (c.email ?? '').toLowerCase().contains(q))) c,
+    ];
+  }
+
+  @override
+  Future<void> bloquer(String idCompte, {required bool bloque}) async {
+    await attente?.future;
+    _verifier();
+    final i = comptesEnBase.indexWhere((c) => c.id == idCompte);
+    comptesEnBase[i] = comptesEnBase[i].avecBlocage(bloque);
   }
 }
