@@ -205,7 +205,16 @@ GoRouter creerRouteur(
           );
         },
       ),
-      GoRoute(path: '/carte', builder: (_, _) => const CartePage()),
+      GoRoute(
+        path: '/carte',
+        builder: (_, _) => CartePage(
+          repository: s.carte,
+          localisation: s.localisation,
+          afficherTuiles: s.afficherTuilesCarte,
+          onOuvrirAnnonce: (context, id) => context.push('/annonces/$id'),
+          onQuitter: (context) => context.go('/accueil'),
+        ),
+      ),
       GoRoute(path: '/publier', builder: (_, _) => formulaire()),
       GoRoute(
         path: '/mes-annonces',

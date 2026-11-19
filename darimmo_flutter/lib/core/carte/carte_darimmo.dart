@@ -30,6 +30,7 @@ class CarteDarImmo extends StatelessWidget {
     this.onPrete,
     this.gestes = gestesParDefaut,
     this.afficherTuiles = true,
+    this.couches = const [],
   });
 
   final MapController? controller;
@@ -48,6 +49,9 @@ class CarteDarImmo extends StatelessWidget {
 
   /// false dans les tests : pas de téléchargement de tuiles.
   final bool afficherTuiles;
+
+  /// Calques dessinés sous les marqueurs (ex : cercle du rayon de recherche, 4.2).
+  final List<Widget> couches;
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +74,7 @@ class CarteDarImmo extends StatelessWidget {
             userAgentPackageName: 'com.darimmo',
             maxNativeZoom: 19,
           ),
+        ...couches,
         MarkerLayer(markers: marqueurs),
         // Bouton « i » repliable : prend peu de place sur une petite carte.
         const RichAttributionWidget(

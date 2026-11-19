@@ -20,6 +20,7 @@ import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
 import '../features/detail/faux_detail.dart';
+import '../features/map/fausse_carte.dart';
 import '../features/search/fausse_recherche.dart';
 
 class FauxAnnonces implements AnnonceRepository {
@@ -90,6 +91,7 @@ Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxD
         annonceTest(1, titre: 'Appartement S+2 lumineux'),
       ]),
       detail: detail ?? FauxDetail(),
+      carte: FausseCarte(),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
