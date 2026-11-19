@@ -67,7 +67,7 @@ class CarteDarImmo extends StatelessWidget {
         if (afficherTuiles)
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.darimmo.poc_temps_reel',
+            userAgentPackageName: 'com.darimmo',
             maxNativeZoom: 19,
           ),
         MarkerLayer(markers: marqueurs),
