@@ -80,7 +80,8 @@ GoRouter creerRouteur(
     // Au lancement : accueil si la session est conservée (2.2), sinon bienvenue (A1).
     initialLocation:
         initiale ?? (s.auth.estConnecte ? '/accueil' : '/bienvenue'),
-    refreshListenable: s.auth, // connexion / déconnexion -> redirect recalculé
+    // connexion / déconnexion, rôle lu -> redirect recalculé
+    refreshListenable: Listenable.merge([s.auth, s.etatCompte]),
     redirect: (context, etat) {
       final lieu = etat.matchedLocation;
       final pageCompte = lieu.startsWith(
@@ -88,7 +89,12 @@ GoRouter creerRouteur(
       ); // bienvenue, connexion, inscription
       // [2.4] page ouverte par le lien de l'email (session de récupération)
       final pageReset = lieu == '/reset-password';
-      if (s.auth.estConnecte) return pageCompte ? '/accueil' : null;
+      if (s.auth.estConnecte) {
+        if (pageCompte) return '/accueil';
+        // [9.1] écrans d'administration : seulement pour un admin
+        if (lieu.startsWith('/admin') && !s.etatCompte.estAdmin) return '/accueil';
+        return null;
+      }
       if (pageCompte || pageReset || pageVisiteur(lieu)) return null;
       return '/bienvenue'; // favoris, messages, profil, publier… demandent un compte
     },
@@ -178,6 +184,7 @@ GoRouter creerRouteur(
                   repository: s.profil,
                   choisirPhotos: s.choisirPhotos,
                   onDeconnexion: s.deconnecter,
+                  compte: s.etatCompte,
                 ),
               ),
             ],
@@ -250,7 +257,13 @@ GoRouter creerRouteur(
         path: '/mes-annonces/modifier',
         builder: (_, etat) => formulaire(edition: etat.extra as EditionAnnonce),
       ),
-      GoRoute(path: '/admin', builder: (_, _) => const AdminPage()),
+      GoRoute(
+        path: '/admin',
+        builder: (_, _) => AdminPage(
+          moderation: s.moderation,
+          onOuvrirAnnonce: (context, id) => context.push('/annonces/$id'),
+        ),
+      ),
     ],
   );
 }

@@ -15,6 +15,7 @@ import 'package:darimmo/features/publish/data/repositories/mes_annonces_reposito
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../features/admin/faux_admin.dart';
 import '../features/auth/faux_auth.dart';
 import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
@@ -84,9 +85,18 @@ class FauxProfilRepository implements ProfilRepository {
   }) async => DonneesProfil(nom: nom, telephone: telephone);
 }
 
-Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxDetail? detail, FauxFavoris? favoris}) =>
+Services fauxServices(
+  FauxAuth auth, {
+  FaussesConversations? conversations,
+  FauxDetail? detail,
+  FauxFavoris? favoris,
+  FauxCompte? compte,
+  FausseModeration? moderation,
+}) =>
     Services(
       auth: auth,
+      compte: compte ?? FauxCompte(),
+      moderation: moderation ?? FausseModeration(),
       profil: FauxProfilRepository(),
       recherche: FausseRecherche([
         annonceTest(1, titre: 'Appartement S+2 lumineux'),
@@ -112,13 +122,22 @@ Future<FauxAuth> demarrer(
   FaussesConversations? conversations,
   FauxDetail? detail,
   FauxFavoris? favoris,
+  FauxCompte? compte,
+  FausseModeration? moderation,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final auth = FauxAuth(connecte: connecte);
   final routeur = creerRouteur(
-    fauxServices(auth, conversations: conversations, detail: detail, favoris: favoris),
+    fauxServices(
+      auth,
+      conversations: conversations,
+      detail: detail,
+      favoris: favoris,
+      compte: compte,
+      moderation: moderation,
+    ),
     initiale: initiale,
   );
   addTearDown(routeur.dispose);

@@ -10,7 +10,10 @@
 // =====================================================================
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:darimmo/features/admin/data/repositories/moderation_repository.dart';
 import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
+import 'package:darimmo/features/auth/data/repositories/compte_repository.dart';
+import 'package:darimmo/features/auth/presentation/viewmodels/etat_compte.dart';
 import 'package:darimmo/features/chat/data/repositories/chat_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/detail/data/repositories/detail_repository.dart';
@@ -30,7 +33,9 @@ import 'package:darimmo/core/location/localisation.dart';
 class Services {
   Services({
     required this.auth,
+    required this.compte,
     required this.profil,
+    required this.moderation,
     required this.recherche,
     required this.detail,
     required this.carte,
@@ -50,6 +55,8 @@ class Services {
   /// Version réelle : tout passe par Supabase.
   factory Services.supabase(SupabaseClient client) => Services(
     auth: SupabaseAuthRepository(client),
+    compte: SupabaseCompteRepository(client),
+    moderation: SupabaseModerationRepository(client),
     profil: SupabaseProfilRepository(client),
     recherche: SupabaseRechercheRepository(client),
     detail: SupabaseDetailRepository(client),
@@ -67,6 +74,11 @@ class Services {
   // ----- Membre A
   final AuthRepository auth;
   final ProfilRepository profil;
+  final CompteRepository compte; // [9.1] fait par C
+  final ModerationRepository moderation; // [9.2] fait par C
+
+  /// [9.1] Rôle du compte connecté (relu à chaque connexion).
+  late final EtatCompte etatCompte = EtatCompte(repository: compte, auth: auth);
 
   // ----- Membre B
   final RechercheRepository recherche;

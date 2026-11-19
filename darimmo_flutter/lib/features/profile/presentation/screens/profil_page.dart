@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
 import 'package:darimmo/features/auth/presentation/validators_auth.dart';
+import 'package:darimmo/features/auth/presentation/viewmodels/etat_compte.dart';
 import 'package:darimmo/features/profile/data/repositories/profil_repository.dart';
 import 'package:darimmo/features/publish/data/models/photo_annonce.dart';
 import 'package:darimmo/features/publish/data/services/choisir_photos.dart';
@@ -14,12 +15,16 @@ class ProfilPage extends StatefulWidget {
     required this.repository,
     required this.choisirPhotos,
     required this.onDeconnexion,
+    this.compte,
   });
 
   final String? email;
   final ProfilRepository repository;
   final ChoisirPhotos choisirPhotos;
   final Future<void> Function() onDeconnexion;
+
+  /// [9.1] Rôle du compte : le lien « Espace administration » n'est visible que pour un admin.
+  final EtatCompte? compte;
 
   @override
   State<ProfilPage> createState() => _ProfilPageState();
@@ -237,12 +242,18 @@ class _ProfilPageState extends State<ProfilPage> {
                   sousTitre: '4.1 · 4.2 (membre B)',
                   onTap: () => context.push('/carte'),
                 ),
-                _Lien(
-                  icone: Icons.shield_outlined,
-                  titre: 'Espace administration',
-                  sousTitre: '9.x (membre A)',
-                  onTap: () => context.push('/admin'),
-                ),
+                if (widget.compte case final compte?)
+                  ListenableBuilder(
+                    listenable: compte,
+                    builder: (context, _) => compte.estAdmin
+                        ? _Lien(
+                            icone: Icons.shield_outlined,
+                            titre: 'Espace administration',
+                            sousTitre: 'Annonces en attente, signalements, comptes',
+                            onTap: () => context.push('/admin'),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: widget.onDeconnexion,
