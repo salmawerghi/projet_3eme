@@ -36,6 +36,7 @@ import 'package:darimmo/features/chat/presentation/widgets/bouton_contacter.dart
 import 'package:darimmo/features/detail/presentation/screens/detail_annonce_page.dart';
 import 'package:darimmo/features/favorites/presentation/screens/favoris_page.dart';
 import 'package:darimmo/features/favorites/presentation/widgets/bouton_favori.dart';
+import 'package:darimmo/features/report/presentation/widgets/lien_signaler.dart';
 import 'package:darimmo/features/map/presentation/screens/carte_page.dart';
 import 'package:darimmo/features/profile/presentation/screens/profil_page.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
@@ -220,6 +221,14 @@ GoRouter creerRouteur(
             afficherTuilesCarte: s.afficherTuilesCarte,
             onQuitter: (context) => context.go('/accueil'),
             boutonFavori: coeur(id, taille: 54, bordure: true),
+            lienSignaler: (idAnnonceur) => LienSignaler(
+              idAnnonce: id,
+              repository: s.signalements,
+              estConnecte: s.auth.estConnecte,
+              estMonAnnonce: idAnnonceur != null && idAnnonceur == s.auth.idUtilisateur,
+              onSeConnecter: (context) => context.go('/bienvenue/connexion'),
+              onCreerCompte: (context) => context.go('/bienvenue/inscription'),
+            ),
             // [7.1] membre C : B place ce bouton dans son écran 3.3.
             boutonContacter: (idAnnonceur) => BoutonContacter(
               idAnnonce: id,

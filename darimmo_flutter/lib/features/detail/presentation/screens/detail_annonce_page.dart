@@ -10,8 +10,8 @@
 // 8.2, et pour l'admin en 9.2).
 //
 // [5.1] cœur favori : paramètre boutonFavori (module favorites, fait par C).
-// À brancher plus tard par le membre B (emplacements marqués [x.y]) :
-// [3.4] « Signaler cette annonce », [3.8] partager.
+// [3.4] « Signaler cette annonce » : paramètre lienSignaler (module report, fait par C).
+// Bonus à brancher plus tard (emplacement marqué) : [3.8] partager.
 // =====================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,6 +52,7 @@ class DetailAnnoncePage extends StatefulWidget {
     required this.boutonContacter,
     required this.onQuitter,
     this.boutonFavori,
+    this.lienSignaler,
     this.afficherTuilesCarte = true,
   });
 
@@ -67,6 +68,10 @@ class DetailAnnoncePage extends StatefulWidget {
 
   /// [5.1] Cœur à gauche du bouton Contacter (maquette B4).
   final Widget? boutonFavori;
+
+  /// [3.4] Lien « Signaler cette annonce » en bas de la page ; [idAnnonceur]
+  /// sert à le cacher sur ses propres annonces.
+  final Widget Function(String? idAnnonceur)? lienSignaler;
 
   /// false dans les tests : pas de téléchargement de tuiles.
   final bool afficherTuilesCarte;
@@ -161,7 +166,10 @@ class _DetailAnnoncePageState extends State<DetailAnnoncePage> {
                   afficherTuiles: widget.afficherTuilesCarte,
                 ),
               ],
-              // [3.4] membre B : lien « Signaler cette annonce » ici (maquette B4).
+              if (widget.lienSignaler case final lien?) ...[
+                const SizedBox(height: 12),
+                lien(a.idAnnonceur),
+              ],
             ]),
           ),
         ]),

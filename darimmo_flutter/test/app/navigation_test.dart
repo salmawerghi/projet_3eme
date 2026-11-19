@@ -20,6 +20,7 @@ import '../features/auth/faux_auth.dart';
 import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
+import '../features/report/faux_signalements.dart';
 import '../features/detail/faux_detail.dart';
 import '../features/favorites/faux_favoris.dart';
 import '../features/map/fausse_carte.dart';
@@ -92,6 +93,7 @@ Services fauxServices(
   FauxFavoris? favoris,
   FauxCompte? compte,
   FausseModeration? moderation,
+  FauxSignalements? signalements,
 }) =>
     Services(
       auth: auth,
@@ -104,6 +106,7 @@ Services fauxServices(
       detail: detail ?? FauxDetail(),
       carte: FausseCarte(),
       favoris: favoris ?? FauxFavoris(),
+      signalements: signalements ?? FauxSignalements(),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
@@ -124,6 +127,7 @@ Future<FauxAuth> demarrer(
   FauxFavoris? favoris,
   FauxCompte? compte,
   FausseModeration? moderation,
+  FauxSignalements? signalements,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
@@ -137,6 +141,7 @@ Future<FauxAuth> demarrer(
       favoris: favoris,
       compte: compte,
       moderation: moderation,
+      signalements: signalements,
     ),
     initiale: initiale,
   );

@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:darimmo/features/admin/data/models/annonce_a_moderer.dart';
+import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
 import 'package:darimmo/features/admin/data/repositories/moderation_repository.dart';
 import 'package:darimmo/features/auth/data/repositories/compte_repository.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
@@ -33,15 +34,55 @@ AnnonceAModerer annonceAModerer(String id, {String? titre, int heures = 3, Strin
       envoyeeLe: dateModeration.subtract(Duration(hours: heures)),
     );
 
+/// Signalements : 2 sur l'annonce s1 (dont un avec précision), 1 sur s2.
+List<AnnonceSignalee> signalementsTest() => [
+      AnnonceSignalee(
+        idAnnonce: 's1',
+        titre: 'Studio meublé étudiant',
+        statut: StatutAnnonce.publiee,
+        typeBien: TypeBien.appartement,
+        typeOffre: TypeOffre.location,
+        prix: 450,
+        ville: 'Sfax',
+        nomAnnonceur: 'Sami Vendeur',
+        signalements: [
+          SignalementRecu(id: 2, motif: 'Photos ne correspondant pas au bien', date: dateModeration.subtract(const Duration(days: 3)), nomAuteur: 'Lina Acheteuse'),
+          SignalementRecu(
+            id: 5,
+            motif: 'Annonce frauduleuse ou arnaque — Le vendeur demande un acompte avant toute visite.',
+            date: dateModeration.subtract(const Duration(hours: 2)),
+            nomAuteur: 'Karim Jaziri',
+          ),
+        ],
+      ),
+      AnnonceSignalee(
+        idAnnonce: 's2',
+        titre: 'Local commercial Gabès',
+        statut: StatutAnnonce.publiee,
+        typeBien: TypeBien.local,
+        typeOffre: TypeOffre.location,
+        prix: 1200,
+        ville: 'Gabès',
+        signalements: [
+          SignalementRecu(id: 7, motif: 'Bien déjà vendu ou loué', date: dateModeration.subtract(const Duration(hours: 1))),
+        ],
+      ),
+    ];
+
 class FausseModeration implements ModerationRepository {
-  FausseModeration([List<AnnonceAModerer>? annonces])
-      : annonces = annonces ??
+  FausseModeration([List<AnnonceAModerer>? annonces, List<AnnonceSignalee>? signales])
+      : signales = signales ?? signalementsTest(),
+        annonces = annonces ??
             [
               annonceAModerer('m1', titre: 'Appartement s+2', heures: 30),
               annonceAModerer('m2', titre: 'Villa Hammamet', heures: 3, nom: 'Ines Gharbi'),
             ];
 
   final List<AnnonceAModerer> annonces;
+  final List<AnnonceSignalee> signales;
+  final masquees = <String>[];
+  final traites = <int>[];
+  final classes = <int>[];
   final validees = <String>[];
   final rejets = <String, String>{};
 
@@ -79,5 +120,28 @@ class FausseModeration implements ModerationRepository {
     _verifier();
     annonces.removeWhere((a) => a.id == idAnnonce);
     rejets[idAnnonce] = motif;
+  }
+
+  @override
+  Future<List<AnnonceSignalee>> signalements() async {
+    _verifier();
+    return [...signales];
+  }
+
+  @override
+  Future<void> masquer(String idAnnonce, List<int> idsSignalements) async {
+    await attente?.future;
+    _verifier();
+    signales.removeWhere((a) => a.idAnnonce == idAnnonce);
+    masquees.add(idAnnonce);
+    traites.addAll(idsSignalements);
+  }
+
+  @override
+  Future<void> classer(List<int> idsSignalements) async {
+    await attente?.future;
+    _verifier();
+    signales.removeWhere((a) => a.ids.any(idsSignalements.contains));
+    classes.addAll(idsSignalements);
   }
 }

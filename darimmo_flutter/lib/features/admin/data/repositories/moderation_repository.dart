@@ -1,6 +1,7 @@
 // =====================================================================
-// DarImmo - [9.2] ModerationRepository : valider ou rejeter une annonce
-// Tâche du membre A, réalisée par le membre C.
+// DarImmo - [9.2] [9.4] ModerationRepository : valider ou rejeter une
+// annonce ; traiter les signalements.
+// Tâches du membre A, réalisées par le membre C.
 //
 // Sécurité dans la base (déjà en place) :
 //   - RLS : seul un admin peut modifier l'annonce d'un autre ;
@@ -14,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:darimmo/features/admin/data/models/annonce_a_moderer.dart';
+import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
 
 class ModerationException implements Exception {
   const ModerationException(this.message, {this.dejaTraitee = false});
@@ -35,6 +37,16 @@ abstract class ModerationRepository {
   Future<void> valider(String idAnnonce);
 
   Future<void> rejeter(String idAnnonce, String motif);
+
+  /// [9.4] Signalements en attente, regroupés par annonce.
+  Future<List<AnnonceSignalee>> signalements();
+
+  /// [9.4] Masque l'annonce (statut masquee : plus visible, annonceur notifié
+  /// par send-push) puis marque ses signalements « traite ».
+  Future<void> masquer(String idAnnonce, List<int> idsSignalements);
+
+  /// [9.4] Classe les signalements sans suite (statut classe) ; l'annonce reste en ligne.
+  Future<void> classer(List<int> idsSignalements);
 }
 
 class SupabaseModerationRepository implements ModerationRepository {
@@ -86,4 +98,35 @@ class SupabaseModerationRepository implements ModerationRepository {
   @override
   Future<void> rejeter(String idAnnonce, String motif) =>
       _changerStatut(idAnnonce, {'statut': 'rejetee', 'motif_rejet': motif.trim()});
+
+  @override
+  Future<List<AnnonceSignalee>> signalements() => _appel(() async {
+        final lignes = await _client
+            .from('signalements')
+            .select(AnnonceSignalee.colonnes)
+            .eq('statut', 'en_attente')
+            .order('date', ascending: true)
+            .limit(500);
+        return AnnonceSignalee.regrouper(lignes);
+      });
+
+  Future<void> _statutSignalements(List<int> ids, String statut) => _appel(() async {
+        await _client.from('signalements').update({'statut': statut}).inFilter('id', ids);
+      });
+
+  @override
+  Future<void> masquer(String idAnnonce, List<int> idsSignalements) async {
+    await _appel(() async {
+      final modifiees = await _client
+          .from('annonces')
+          .update({'statut': 'masquee'})
+          .eq('id', idAnnonce)
+          .select('id');
+      if (modifiees.isEmpty) throw const ModerationException('Annonce introuvable : elle a peut-être été supprimée.');
+    });
+    await _statutSignalements(idsSignalements, 'traite');
+  }
+
+  @override
+  Future<void> classer(List<int> idsSignalements) => _statutSignalements(idsSignalements, 'classe');
 }

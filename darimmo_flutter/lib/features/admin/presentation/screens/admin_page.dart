@@ -6,15 +6,19 @@
 //       vers l'accueil, et le lien du profil n'est visible que pour lui.
 // [9.2] Onglet « En attente » : valider, ou rejeter avec motif obligatoire.
 //       L'annonceur est notifié par la base (8.2, send-push).
-// [9.4] Onglet « Signalements » et [9.3] onglet « Comptes » : à venir.
+// [9.4] Onglet « Signalements » : masquer l'annonce ou classer sans suite.
+// [9.3] Onglet « Comptes » : à venir.
 // =====================================================================
 import 'package:flutter/material.dart';
 
 import 'package:darimmo/core/theme/darimmo_theme.dart';
 import 'package:darimmo/core/widgets/bientot_disponible.dart';
 import 'package:darimmo/features/admin/data/repositories/moderation_repository.dart';
+import 'package:darimmo/features/admin/data/models/annonce_signalee.dart';
 import 'package:darimmo/features/admin/presentation/viewmodels/moderation_view_model.dart';
+import 'package:darimmo/features/admin/presentation/viewmodels/signalements_view_model.dart';
 import 'package:darimmo/features/admin/presentation/widgets/carte_moderation.dart';
+import 'package:darimmo/features/admin/presentation/widgets/carte_signalement.dart';
 
 class AdminPage extends StatefulWidget {
   const AdminPage({
@@ -36,10 +40,12 @@ class AdminPage extends StatefulWidget {
 
 class _AdminPageState extends State<AdminPage> {
   late final _vm = ModerationViewModel(widget.moderation)..charger();
+  late final _signalements = SignalementsViewModel(widget.moderation)..charger();
 
   @override
   void dispose() {
     _vm.dispose();
+    _signalements.dispose();
     super.dispose();
   }
 
@@ -58,6 +64,16 @@ class _AdminPageState extends State<AdminPage> {
     final erreur = await _vm.rejeter(id, motif);
     if (mounted) _message(erreur ?? '« $titre » est rejetée. L’annonceur est prévenu.');
     return erreur == null;
+  }
+
+  Future<void> _masquer(AnnonceSignalee a) async {
+    final erreur = await _signalements.masquer(a);
+    if (mounted) _message(erreur ?? '« ${a.titre} » est masquée. L’annonceur est prévenu.');
+  }
+
+  Future<void> _classer(AnnonceSignalee a) async {
+    final erreur = await _signalements.classer(a);
+    if (mounted) _message(erreur ?? 'Signalement classé sans suite : « ${a.titre} » reste en ligne.');
   }
 
   @override
@@ -85,19 +101,20 @@ class _AdminPageState extends State<AdminPage> {
                     : 'En attente · ${_vm.annonces.length}'),
               ),
             ),
-            const Tab(text: 'Signalements'),
+            Tab(
+              child: ListenableBuilder(
+                listenable: _signalements,
+                builder: (_, _) => Text(_signalements.chargement && _signalements.annonces.isEmpty
+                    ? 'Signalements'
+                    : 'Signalements · ${_signalements.total}'),
+              ),
+            ),
             const Tab(text: 'Comptes'),
           ]),
         ),
         body: TabBarView(children: [
           ListenableBuilder(listenable: _vm, builder: (context, _) => _enAttente()),
-          const BientotDisponible(
-            titre: 'Signalements',
-            stories: '9.4 Traiter les signalements',
-            responsable: 'Membre A',
-            icone: Icons.flag_outlined,
-            avecAppBar: false,
-          ),
+          ListenableBuilder(listenable: _signalements, builder: (context, _) => _listeSignalements()),
           const BientotDisponible(
             titre: 'Comptes',
             stories: '9.3 Bloquer ou débloquer un compte',
@@ -150,6 +167,51 @@ class _AdminPageState extends State<AdminPage> {
             onOuvrir: () => widget.onOuvrirAnnonce(context, a.id),
             onValider: () => _valider(a.id, a.titre),
             onRejeter: (motif) => _rejeter(a.id, a.titre, motif),
+          );
+        },
+      ),
+    );
+  }
+}
+
+extension on _AdminPageState {
+  Widget _listeSignalements() {
+    final vm = _signalements;
+    final annonces = vm.annonces;
+    if (vm.chargement && annonces.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (vm.erreur != null && annonces.isEmpty) {
+      return _Message(
+        icone: Icons.wifi_off,
+        texte: vm.erreur!,
+        bouton: FilledButton.icon(onPressed: vm.charger, icon: const Icon(Icons.refresh), label: const Text('Réessayer')),
+      );
+    }
+    if (annonces.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: vm.charger,
+        child: ListView(children: const [
+          SizedBox(height: 80),
+          _Message(icone: Icons.verified_user_outlined, texte: 'Aucun signalement à traiter.'),
+        ]),
+      );
+    }
+    final maintenant = (widget.maintenant ?? DateTime.now)();
+    return RefreshIndicator(
+      onRefresh: vm.charger,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        itemCount: annonces.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 14),
+        itemBuilder: (context, i) {
+          final a = annonces[i];
+          return CarteSignalement(
+            key: ValueKey(a.idAnnonce),
+            annonce: a,
+            maintenant: maintenant,
+            enCours: vm.enCours(a.idAnnonce),
+            onOuvrir: () => widget.onOuvrirAnnonce(context, a.idAnnonce),
+            onMasquer: () => _masquer(a),
+            onClasser: () => _classer(a),
           );
         },
       ),
