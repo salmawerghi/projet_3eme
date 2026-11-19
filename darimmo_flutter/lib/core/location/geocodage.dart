@@ -49,7 +49,7 @@ class NominatimGeocodage implements Geocodage {
     });
     try {
       final reponse = await _client
-          .get(uri, headers: {if (!kIsWeb) 'User-Agent': 'DarImmo-PoC/1.0 (projet etudiant, app Flutter)'})
+          .get(uri, headers: {if (!kIsWeb) 'User-Agent': 'DarImmo/1.0 (application Flutter)'})
           .timeout(const Duration(seconds: 10));
       if (reponse.statusCode == 429) {
         throw const GeocodageException('Trop de recherches : patientez quelques secondes.');
