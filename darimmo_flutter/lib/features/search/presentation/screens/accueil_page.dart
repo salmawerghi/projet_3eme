@@ -25,12 +25,16 @@ class AccueilPage extends StatelessWidget {
     required this.repository,
     required this.onOuvrir,
     this.onVoirCarte,
+    this.boutonFavori,
     this.maintenant,
   });
 
   final RechercheRepository repository;
   final void Function(BuildContext context, AnnonceRecherche annonce) onOuvrir;
   final void Function(BuildContext context)? onVoirCarte;
+
+  /// [5.1] Cœur de chaque annonce (fourni par le module favoris).
+  final Widget Function(String idAnnonce)? boutonFavori;
 
   /// Heure de référence pour « il y a 2 h » (fixée dans les tests).
   final DateTime Function()? maintenant;
@@ -206,6 +210,7 @@ class _ContenuState extends State<_Contenu> {
               annonce: annonces[i],
               maintenant: maintenant,
               onTap: () => widget.page.onOuvrir(context, annonces[i]),
+              favori: widget.page.boutonFavori?.call(annonces[i].id),
             );
           }
           if (vm.erreurSuite case final message?) {

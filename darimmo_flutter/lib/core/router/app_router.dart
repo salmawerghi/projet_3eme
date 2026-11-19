@@ -35,6 +35,7 @@ import 'package:darimmo/features/chat/presentation/screens/discussion_page.dart'
 import 'package:darimmo/features/chat/presentation/widgets/bouton_contacter.dart';
 import 'package:darimmo/features/detail/presentation/screens/detail_annonce_page.dart';
 import 'package:darimmo/features/favorites/presentation/screens/favoris_page.dart';
+import 'package:darimmo/features/favorites/presentation/widgets/bouton_favori.dart';
 import 'package:darimmo/features/map/presentation/screens/carte_page.dart';
 import 'package:darimmo/features/profile/presentation/screens/profil_page.dart';
 import 'package:darimmo/features/publish/data/models/annonce.dart';
@@ -62,6 +63,16 @@ GoRouter creerRouteur(
         localisation: s.localisation,
         afficherTuiles: s.afficherTuilesCarte,
         edition: edition,
+      );
+
+  // [5.1] Cœur favori (liste de l'accueil, détail) ; un visiteur est invité à se connecter.
+  BoutonFavori coeur(String idAnnonce, {double taille = 38, bool bordure = false}) => BoutonFavori(
+        idAnnonce: idAnnonce,
+        etat: s.etatFavoris,
+        taille: taille,
+        bordure: bordure,
+        onSeConnecter: (context) => context.go('/bienvenue/connexion'),
+        onCreerCompte: (context) => context.go('/bienvenue/inscription'),
       );
 
   return GoRouter(
@@ -128,13 +139,22 @@ GoRouter creerRouteur(
                   repository: s.recherche,
                   onOuvrir: (context, a) => context.push('/annonces/${a.id}'),
                   onVoirCarte: (context) => context.push('/carte'),
+                  boutonFavori: coeur,
                 ),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/favoris', builder: (_, _) => const FavorisPage()),
+              GoRoute(
+                path: '/favoris',
+                builder: (_, _) => FavorisPage(
+                  repository: s.favoris,
+                  etat: s.etatFavoris,
+                  onOuvrir: (context, id) => context.push('/annonces/$id'),
+                  onParcourir: (context) => context.go('/accueil'),
+                ),
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -192,6 +212,7 @@ GoRouter creerRouteur(
             repository: s.detail,
             afficherTuilesCarte: s.afficherTuilesCarte,
             onQuitter: (context) => context.go('/accueil'),
+            boutonFavori: coeur(id, taille: 54, bordure: true),
             // [7.1] membre C : B place ce bouton dans son écran 3.3.
             boutonContacter: (idAnnonceur) => BoutonContacter(
               idAnnonce: id,

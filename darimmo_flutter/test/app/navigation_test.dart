@@ -20,6 +20,7 @@ import '../features/chat/faux_chat.dart';
 import '../features/publish/faux_photos_repository.dart';
 import '../features/publish/faux_position.dart';
 import '../features/detail/faux_detail.dart';
+import '../features/favorites/faux_favoris.dart';
 import '../features/map/fausse_carte.dart';
 import '../features/search/fausse_recherche.dart';
 
@@ -83,7 +84,7 @@ class FauxProfilRepository implements ProfilRepository {
   }) async => DonneesProfil(nom: nom, telephone: telephone);
 }
 
-Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxDetail? detail}) =>
+Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxDetail? detail, FauxFavoris? favoris}) =>
     Services(
       auth: auth,
       profil: FauxProfilRepository(),
@@ -92,6 +93,7 @@ Services fauxServices(FauxAuth auth, {FaussesConversations? conversations, FauxD
       ]),
       detail: detail ?? FauxDetail(),
       carte: FausseCarte(),
+      favoris: favoris ?? FauxFavoris(),
       annonces: FauxAnnonces(),
       photos: FauxPhotosRepository(),
       mesAnnonces: FaussesMesAnnonces(),
@@ -109,12 +111,16 @@ Future<FauxAuth> demarrer(
   String? initiale,
   FaussesConversations? conversations,
   FauxDetail? detail,
+  FauxFavoris? favoris,
 }) async {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final auth = FauxAuth(connecte: connecte);
-  final routeur = creerRouteur(fauxServices(auth, conversations: conversations, detail: detail), initiale: initiale);
+  final routeur = creerRouteur(
+    fauxServices(auth, conversations: conversations, detail: detail, favoris: favoris),
+    initiale: initiale,
+  );
   addTearDown(routeur.dispose);
   await tester.pumpWidget(DarImmoApp(routeur: routeur));
   await tester.pumpAndSettle();
@@ -267,7 +273,8 @@ void main() {
 
     await tester.tap(find.text('Favoris'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('5.2 Consulter mes favoris'), findsOneWidget);
+    expect(find.text('Mes favoris'), findsOneWidget, reason: 'écran 5.2');
+    expect(find.text('Aucun favori pour l’instant'), findsOneWidget);
 
     await tester.tap(find.text('Messages'));
     await tester.pumpAndSettle();

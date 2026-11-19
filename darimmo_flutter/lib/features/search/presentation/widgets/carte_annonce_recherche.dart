@@ -28,11 +28,20 @@ String formaterPrixAnnonce(AnnonceRecherche a) =>
     '${formaterPrix(a.prix)} ${a.typeOffre == TypeOffre.location ? 'DT/mois' : 'DT'}';
 
 class CarteAnnonceRecherche extends StatelessWidget {
-  const CarteAnnonceRecherche({super.key, required this.annonce, required this.onTap, required this.maintenant});
+  const CarteAnnonceRecherche({
+    super.key,
+    required this.annonce,
+    required this.onTap,
+    required this.maintenant,
+    this.favori,
+  });
 
   final AnnonceRecherche annonce;
   final VoidCallback onTap;
   final DateTime maintenant;
+
+  /// [5.1] Bouton cœur, en haut à droite de la photo (maquette B1).
+  final Widget? favori;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +66,7 @@ class CarteAnnonceRecherche extends StatelessWidget {
               child: Stack(fit: StackFit.expand, children: [
                 _Photo(url: a.photoCouverture, type: a.typeBien),
                 Positioned(top: 12, left: 12, child: _Pastille(texte: offre)),
+                if (favori != null) Positioned(top: 10, right: 10, child: favori!),
                 if (a.photos.length > 1)
                   Positioned(
                     bottom: 12,

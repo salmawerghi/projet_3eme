@@ -14,6 +14,8 @@ import 'package:darimmo/features/auth/data/repositories/auth_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/chat_repository.dart';
 import 'package:darimmo/features/chat/data/repositories/conversations_repository.dart';
 import 'package:darimmo/features/detail/data/repositories/detail_repository.dart';
+import 'package:darimmo/features/favorites/data/repositories/favoris_repository.dart';
+import 'package:darimmo/features/favorites/presentation/viewmodels/etat_favoris.dart';
 import 'package:darimmo/features/map/data/repositories/carte_repository.dart';
 import 'package:darimmo/features/notifications/data/push_service.dart';
 import 'package:darimmo/features/profile/data/repositories/profil_repository.dart';
@@ -32,6 +34,7 @@ class Services {
     required this.recherche,
     required this.detail,
     required this.carte,
+    required this.favoris,
     required this.annonces,
     required this.photos,
     required this.mesAnnonces,
@@ -51,6 +54,7 @@ class Services {
     recherche: SupabaseRechercheRepository(client),
     detail: SupabaseDetailRepository(client),
     carte: SupabaseCarteRepository(client),
+    favoris: SupabaseFavorisRepository(client),
     annonces: SupabaseAnnonceRepository(client),
     photos: SupabasePhotosRepository(client),
     mesAnnonces: SupabaseMesAnnoncesRepository(client),
@@ -68,6 +72,11 @@ class Services {
   final RechercheRepository recherche;
   final DetailRepository detail; // [3.3] fait par C
   final CarteRepository carte; // [4.1] [4.2] faits par C
+  final FavorisRepository favoris; // [5.1] [5.2] faits par C
+
+  /// [5.1] Mes favoris, partagés par la liste, le détail et l'onglet Favoris
+  /// (chargés à la connexion, vidés à la déconnexion).
+  late final EtatFavoris etatFavoris = EtatFavoris(repository: favoris, auth: auth);
 
   // ----- Membre C
   final AnnonceRepository annonces;
